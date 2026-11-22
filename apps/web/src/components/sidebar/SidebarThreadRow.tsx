@@ -45,7 +45,6 @@ import {
   CheckIcon,
   CircleAlertIcon,
   CircleCheckIcon,
-  CircleDashedIcon,
   CircleDotDashedIcon,
   ClockIcon,
   FolderGit2Icon,
@@ -74,6 +73,8 @@ import { msg, T, useGT, useMessages, Var } from "gt-react";
 import type { MessageResolver } from "../../i18n/messages";
 
 import { useRightPanelStore } from "../../rightPanelStore";
+import { WorkingDotGrid } from "../../conductor/WorkingDotGrid";
+import { conductorFlags } from "../../conductor/flags";
 import { useOpenPrLink } from "../../lib/openPullRequestLink";
 import { useUiStateStore } from "../../uiStateStore";
 import { useThreadSelectionStore } from "../../threadSelectionStore";
@@ -229,6 +230,7 @@ function SidebarProviderStack(props: {
   thread: SidebarThreadSummary;
   providerEntryByInstanceId: ReadonlyMap<string, SidebarProviderEntry>;
 }) {
+  if (!conductorFlags.sidebarModelIcon) return null;
   const stack = resolveThreadProviderStack(props.thread);
   const currentInstanceId = stack[stack.length - 1]!;
   const currentEntry = props.providerEntryByInstanceId.get(currentInstanceId) ?? null;
@@ -585,7 +587,7 @@ const dropVerbBadge: Record<SidebarDropVerb, ReactNode> = {
 };
 
 const TOP_STATUS_ICONS = {
-  working: CircleDashedIcon,
+  working: WorkingDotGrid,
   waiting: CircleDotDashedIcon,
   input: MessageCircleQuestionIcon,
   request: UserRoundIcon,
@@ -1357,7 +1359,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     ? "flex flex-col justify-center px-2.5 py-1.5"
                     : "flex h-9 items-center gap-2.5 px-2.5",
                   // Lines titles up with the folder name, past its chevron and icon.
-                  inFolder && "ps-9",
+                  inFolder && "relative ps-9",
                 )}
                 onClick={handleClick}
                 onPointerEnter={intentPrefetch.onPointerEnter}
@@ -1384,6 +1386,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                   ) : null}
                 </span>
               )}
+              {inFolder && topStatus?.icon === "working" ? (
+                <WorkingDotGrid className="absolute top-1/2 left-3.5 -translate-y-1/2 text-info-foreground" />
+              ) : null}
               {draftIndicator}
               {title}
               {multiline ? titleLineIcons : null}
@@ -1442,7 +1447,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                           <T>Dismiss Woke notification</T>
                         </TooltipPopup>
                       </Tooltip>
-                    ) : inFolder && topStatus ? (
+                    ) : inFolder && topStatus?.icon === "working" ? null : inFolder && topStatus ? (
                       // Folder rows have no status line, so the status takes the time slot.
                       <span
                         className={cn(
