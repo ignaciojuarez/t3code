@@ -7,6 +7,12 @@ set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo"
+# The desktop build shells out to `vp`, which lives in the workspace's node_modules.
+export PATH="$repo/node_modules/.bin:$PATH"
+command -v vp >/dev/null 2>&1 || {
+  echo "build.sh: vp not found; run pnpm install first." >&2
+  exit 1
+}
 
 app_name="T3 Code (Beta).app"
 rust_target="aarch64-apple-darwin"
