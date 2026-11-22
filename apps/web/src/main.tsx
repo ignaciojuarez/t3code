@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 
 import "@fontsource-variable/inter";
 import "./index.css";
+import "./conductor/conductor.css";
 
 import { trackKeyboardLayout } from "./keyboardLayout";
 import { hasCloudPublicConfig } from "./cloud/publicConfig";
