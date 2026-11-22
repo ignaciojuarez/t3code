@@ -72,6 +72,7 @@ import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
 import { ThreadTitleInstructionsSettings } from "./ThreadTitleInstructionsSettings";
 import { SnoozePresetsRow } from "./SnoozePresetsSettings";
 import { useDesktopUpdateState } from "../../state/desktopUpdate";
+import { useConductorUpgrade } from "../../conductor/upgrade/useConductorUpgrade";
 import { managedTelemetryOffMessage, usePrimaryManagedPolicy } from "../../state/managedPolicy";
 import {
   getTextGenerationModelOptionsByInstance,
@@ -174,6 +175,7 @@ function AboutVersionSection() {
   const gt = useGT();
   const messages = useMessages();
   const updateState = useDesktopUpdateState();
+  const forkUpgrade = useConductorUpgrade(updateState);
   const [switchChannel, setSwitchChannel] = useState<DesktopUpdateChannel | null>(null);
   const [isUpdateActionPending, setIsUpdateActionPending] = useState(false);
   const { environments } = useEnvironments();
@@ -220,6 +222,14 @@ function AboutVersionSection() {
   const handleButtonClick = async () => {
     const bridge = window.desktopBridge;
     if (!bridge) return;
+
+    // Conductor: this fork never installs upstream builds; it starts the fork upgrade instead.
+    if (forkUpgrade) {
+      if (isUpdateActionPending) return;
+      setIsUpdateActionPending(true);
+      void forkUpgrade.start().finally(() => setIsUpdateActionPending(false));
+      return;
+    }
 
     const action = updateState ? resolveDesktopUpdateButtonAction(updateState) : "none";
 
@@ -318,7 +328,9 @@ function AboutVersionSection() {
   };
 
   const action = updateState ? resolveDesktopUpdateButtonAction(updateState) : "none";
-  const buttonTooltip = updateState ? getDesktopUpdateButtonTooltip(updateState, messages) : null;
+  const buttonTooltip =
+    forkUpgrade?.label ??
+    (updateState ? getDesktopUpdateButtonTooltip(updateState, messages) : null);
   const buttonDisabled =
     action === "none"
       ? !canCheckForUpdate(updateState)
@@ -332,7 +344,10 @@ function AboutVersionSection() {
     ...(appOffTrack ? {} : { "up-to-date": gt("Up to Date") }),
   };
   const buttonLabel =
-    actionLabel[action] ?? statusLabel[updateState?.status ?? ""] ?? gt("Check for Updates");
+    forkUpgrade?.actionLabel ??
+    actionLabel[action] ??
+    statusLabel[updateState?.status ?? ""] ??
+    gt("Check for Updates");
   const description =
     action === "download" || action === "install"
       ? gt("Update available.")

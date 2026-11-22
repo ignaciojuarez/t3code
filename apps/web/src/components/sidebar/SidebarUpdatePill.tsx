@@ -6,6 +6,7 @@ import { msg, T, useGT, useMessages } from "gt-react";
 import { type ComponentProps, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { useConductorUpgrade } from "../../conductor/upgrade/useConductorUpgrade";
 import { isElectron } from "../../env";
 import { m } from "../../i18n/messages";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -237,11 +238,15 @@ function SidebarUpdateControl() {
 
   const action = state ? resolveDesktopUpdateButtonAction(state) : "none";
   const isDownloading = state?.status === "downloading";
+  // Conductor: this fork never installs upstream builds; the pill starts the fork upgrade instead.
+  const forkUpgrade = useConductorUpgrade(state);
   const localUpdateVersion =
-    state && action !== "none" ? getDesktopUpdateDownloadedVersion(state) : null;
+    forkUpgrade === null && state && action !== "none"
+      ? getDesktopUpdateDownloadedVersion(state)
+      : null;
   const everything = useUpdateEverything(localUpdateVersion);
   const checkProviderUpdates = useCheckProviderUpdates();
-  const runsEverything = everything.hasUpdates && !isDownloading;
+  const runsEverything = forkUpgrade === null && everything.hasUpdates && !isDownloading;
   const run = useUpdateEverythingRun();
   const isRunningEverything = run !== null;
   const showCheckIcon = shouldShowDesktopUpdateCheckIcon({
@@ -264,7 +269,7 @@ function SidebarUpdateControl() {
     ? everything.summary
     : showUpdateDetails
       ? state
-        ? getDesktopUpdateButtonTooltip(state, messages)
+        ? (forkUpgrade?.label ?? getDesktopUpdateButtonTooltip(state, messages))
         : gt("Update available")
       : showCheckIcon
         ? gt("Checking for updates…")
@@ -293,6 +298,12 @@ function SidebarUpdateControl() {
   const handleAction = async () => {
     const bridge = window.desktopBridge;
     if (isInteractionDisabled) return;
+
+    if (forkUpgrade) {
+      setIsActionPending(true);
+      void forkUpgrade.start().finally(() => setIsActionPending(false));
+      return;
+    }
 
     if (runsEverything) {
       setIsConfirmingEverything(true);
