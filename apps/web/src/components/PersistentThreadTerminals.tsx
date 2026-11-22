@@ -52,6 +52,8 @@ interface PersistentThreadTerminalDrawerProps {
   closeShortcutLabel: string | undefined;
   keybindings: ResolvedKeybindingsConfig;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
+  /** "dock" fills the Conductor right-panel terminal dock instead of sliding under the chat. */
+  placement?: "drawer" | "dock";
 }
 
 export const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDrawer({
@@ -66,6 +68,7 @@ export const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerm
   closeShortcutLabel,
   keybindings,
   onAddTerminalContext,
+  placement = "drawer",
 }: PersistentThreadTerminalDrawerProps) {
   const messages = useMessages();
   const canOperateTerminal = useEnvironmentScope(threadRef.environmentId, AuthTerminalOperateScope);
@@ -201,15 +204,28 @@ export const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerm
   return (
     <div
       className={cn(
-        "grid shrink-0 overflow-clip",
-        active ? (visible ? "grid-rows-[1fr]" : "grid-rows-[0fr]") : "hidden",
-        active &&
+        placement === "dock"
+          ? cn("flex min-h-0 flex-1 flex-col", !visible && "hidden")
+          : "grid shrink-0 overflow-clip",
+        placement === "dock"
+          ? null
+          : active
+            ? visible
+              ? "grid-rows-[1fr]"
+              : "grid-rows-[0fr]"
+            : "hidden",
+        placement !== "dock" &&
+          active &&
           "[[data-panel-animations=true]_&]:transition-[grid-template-rows] [[data-panel-animations=true]_&]:duration-(--panel-animation-duration) [[data-panel-animations=true]_&]:ease-out",
-        active && visible && "[[data-panel-animations=true]_&]:starting:grid-rows-[0fr]!",
+        placement !== "dock" &&
+          active &&
+          visible &&
+          "[[data-panel-animations=true]_&]:starting:grid-rows-[0fr]!",
       )}
     >
-      <div className="min-h-0 overflow-clip">
+      <div className={cn("min-h-0 overflow-clip", placement === "dock" && "flex flex-1 flex-col")}>
         <ThreadTerminalDrawer
+          mode={placement === "dock" ? "panel" : "drawer"}
           threadRef={threadRef}
           threadId={threadId}
           cwd={cwd}

@@ -114,6 +114,7 @@ import { preventThumbButtonFocus, takeThumbButtonNavigation } from "./preview/th
 import { PierreEntryIcon } from "./chat/PierreEntryIcon";
 import { resolvePullRequestState } from "./pullRequest/pullRequestPresentation";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { ChangesTabCount } from "~/conductor/rightPanel/ChangesTabCount";
 import { observeResize } from "~/lib/observeResize";
 import { surfaceShortcutKey } from "~/lib/surfaceShortcutKey";
 
@@ -127,6 +128,12 @@ export interface RightPanelTabsProps {
   defaultWidth?: number;
   inlineSize?: PreviewPanelInlineSize;
   layoutControls?: ReactNode;
+  /** Rendered above the tab bar, which then leaves the window titlebar row to it. */
+  header?: ReactNode;
+  /** False where the window's fixed titlebar controls no longer sit over the tab bar. */
+  reserveTitlebarControls?: boolean;
+  /** Rendered below the surface content, e.g. the Conductor terminal dock. */
+  footer?: ReactNode;
   surfaces: readonly RightPanelSurface[];
   environmentId: EnvironmentId | null;
   activeSurfaceId: string | null;
@@ -378,7 +385,7 @@ function RightPanelEmptyState(props: {
       onClick: props.onAddTerminal,
     },
     {
-      label: msg("Files"),
+      label: msg("All files"),
       icon: Files,
       shortcut: "F",
       available: props.filesAvailable,
@@ -386,7 +393,7 @@ function RightPanelEmptyState(props: {
       onClick: props.onAddFiles,
     },
     {
-      label: msg("Diff"),
+      label: msg("Changes"),
       icon: FileDiff,
       shortcut: "D",
       available: props.diffAvailable,
@@ -602,9 +609,9 @@ function surfaceTitle(
 ): string {
   switch (surface.kind) {
     case "diff":
-      return resolve(msg("Diff"));
+      return resolve(msg("Changes"));
     case "files":
-      return resolve(msg("Files"));
+      return resolve(msg("All files"));
     case "file":
       return surface.relativePath.slice(
         Math.max(surface.relativePath.lastIndexOf("/"), surface.relativePath.lastIndexOf("\\")) + 1,
@@ -991,24 +998,30 @@ function RightPanelTab(
         ? sideChatShell.title
         : formatSubagentDisplayTitle(sideChatShell.title);
   const sideChatState = sideChatTabState(sideChatShell);
+  const iconless = surface.kind === "diff" || surface.kind === "files";
   const content = (
     <>
-      <PanelTabCloseButton label={gt("Close {title}", { title })} onClick={() => onClose(surface)}>
-        <SurfaceIcon
-          surface={surface}
-          previewUrl={props.previewUrl}
-          previewCapturedUrl={props.previewCapturedUrl}
-          theme={props.theme}
-          environmentId={props.environmentId}
-          pullRequestStatusSeed={props.pullRequestStatusSeed}
-        />
-        {props.pending ? (
-          <span
-            className="absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full bg-current"
-            aria-hidden
+      {iconless ? null : (
+        <PanelTabCloseButton
+          label={gt("Close {title}", { title })}
+          onClick={() => onClose(surface)}
+        >
+          <SurfaceIcon
+            surface={surface}
+            previewUrl={props.previewUrl}
+            previewCapturedUrl={props.previewCapturedUrl}
+            theme={props.theme}
+            environmentId={props.environmentId}
+            pullRequestStatusSeed={props.pullRequestStatusSeed}
           />
-        ) : null}
-      </PanelTabCloseButton>
+          {props.pending ? (
+            <span
+              className="absolute -right-0.5 -bottom-0.5 size-1.5 rounded-full bg-current"
+              aria-hidden
+            />
+          ) : null}
+        </PanelTabCloseButton>
+      )}
       {audio === "none" || !audioRuntimeTabId ? null : (
         <Tooltip>
           <TooltipTrigger
@@ -1080,6 +1093,7 @@ function RightPanelTab(
                 onClick={() => onActivate(surface)}
               >
                 <span className="truncate">{title}</span>
+                {surface.kind === "diff" ? <ChangesTabCount /> : null}
               </button>
             }
           />
@@ -1109,7 +1123,8 @@ function RightPanelTab(
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        "cursor-pointer group/tab flex h-6 max-w-36 shrink-0 items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
+        "cursor-pointer group/tab flex h-6 max-w-36 shrink-0 items-center gap-0.5 rounded-md text-xs",
+        iconless ? "px-2.5" : "pr-2 pl-1.5",
         props.ownsDesktopTitleBar && "[-webkit-app-region:no-drag]",
         props.active
           ? "bg-accent text-foreground"
@@ -1126,7 +1141,9 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
   const gt = useGT();
   const messages = useMessages();
   const focusedSurface = props.surfaces.find((surface) => surface.id === props.activeSurfaceId);
-  const ownsDesktopTitleBar = isElectron && props.mode === "inline";
+  const ownsDesktopTitleBar = isElectron && props.mode === "inline" && !props.header;
+  const reservesTitlebarControls =
+    props.mode === "inline" && !props.layoutControls && props.reserveTitlebarControls !== false;
   const browserProfiles = useBrowserDefaults().profiles;
   const { resolvedTheme } = useTheme();
   const tabListRef = useRef<HTMLDivElement>(null);
@@ -1221,7 +1238,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddTerminal,
     },
     {
-      label: msg("Files"),
+      label: msg("All files"),
       icon: Files,
       shortcut: "F",
       available: props.filesAvailable,
@@ -1229,7 +1246,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddFiles,
     },
     {
-      label: msg("Diff"),
+      label: msg("Changes"),
       icon: FileDiff,
       shortcut: "D",
       available: props.diffAvailable,
@@ -1483,13 +1500,20 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
         )
       }
     >
+      {props.header}
       <div
         className={cn(
-          "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center gap-1 pl-2",
-          props.mode === "inline" && !props.layoutControls ? "pr-28" : "pr-3",
+          "flex shrink-0 items-center gap-1 pl-2",
+          props.header
+            ? "h-10 min-h-10"
+            : "h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)]",
+          reservesTitlebarControls ? "pr-28" : "pr-3",
           ownsDesktopTitleBar && "drag-region",
           ownsDesktopTitleBar && "wco:pr-(--workspace-native-controls-inset)",
-          props.mode === "inline" && props.maximized && COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+          props.mode === "inline" &&
+            props.maximized &&
+            !props.header &&
+            COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
         )}
         data-right-panel-tabbar
       >
@@ -1675,10 +1699,10 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           </div>
         ) : null}
         {props.layoutControls}
-        {ownsDesktopTitleBar && !props.layoutControls ? (
+        {ownsDesktopTitleBar && reservesTitlebarControls ? (
           <span aria-hidden className="hidden w-24 shrink-0 wco:block" />
         ) : null}
-        {ownsDesktopTitleBar ? (
+        {ownsDesktopTitleBar && reservesTitlebarControls ? (
           <span
             aria-hidden
             className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
@@ -1712,6 +1736,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           props.children
         )}
       </div>
+      {props.footer}
     </PreviewPanelShell>
   );
 }

@@ -276,6 +276,7 @@ it("opens a repository-relative file from a nested project without a remote", as
       <DiffPanel composerDraftTarget={context.threadRef} workspaceMutationId={null} visible />
     </RegistryContext.Provider>,
   );
+  await userEvent.click(screen.getByRole("button", { name: "Show diffs" }));
   await userEvent.click(screen.getByText(path, { exact: true }));
   expect(
     selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, context.threadRef),
@@ -302,6 +303,7 @@ it.each([false, true])(
         </div>
       </RegistryContext.Provider>,
     );
+    await userEvent.click(screen.getByRole("button", { name: "Show diffs" }));
     const toggle = screen.getByRole("button", { name: `Expand ${path}`, exact: true });
     await expect.element(toggle).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(toggle);

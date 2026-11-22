@@ -282,15 +282,7 @@ it("opens a linked Linear issue from an inactive thread's sidebar badge", async 
   await userEvent.click(issueRow);
   expect(router.history.location.pathname).toBe(`/${ENVIRONMENT_ID}/${linked.id}`);
   await expect.element(page.getByRole("heading", { name: liveTitle })).toBeVisible();
-  await act(() => useRightPanelStore.getState().close(scopeThreadRef(ENVIRONMENT_ID, linked.id)));
-  await expect
-    .element(
-      page.getByRole("region", { name: "Thread details" }).getByRole("link", {
-        name: issueName,
-        exact: true,
-      }),
-    )
-    .toBeVisible();
+  // The Conductor fork has no thread details card, so linked issues are not repeated there.
 });
 
 it("a machine chip stashed in one thread restores with its machine in another", async () => {
@@ -910,6 +902,10 @@ it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel"
     ...DEFAULT_CLIENT_SETTINGS,
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
   });
+  // The Conductor fork opens a new thread's panel with All files; start this one closed.
+  const threadRef = scopeThreadRef(ENVIRONMENT_ID, thread.id);
+  useRightPanelStore.getState().seedSurfaces(threadRef, ["files"], "files");
+  useRightPanelStore.getState().close(threadRef);
   const router = getRouter(
     createMemoryHistory({ initialEntries: [`/${ENVIRONMENT_ID}/${thread.id}`] }),
   );
@@ -922,10 +918,9 @@ it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel"
   const toggle = page.getByRole("button", { name: "Toggle right panel", exact: true });
   await expect.element(toggle).toHaveAttribute("aria-pressed", "false");
   await toggle.click();
-  await page.getByRole("button", { name: /^Files/ }).click();
   await composer.click();
   await userEvent.keyboard("{Control>}t{/Control}");
-  await expect.element(page.getByRole("menuitem", { name: /Files/ })).toBeVisible();
+  await expect.element(page.getByRole("menuitem", { name: /All files/ })).toBeVisible();
   await expect.element(toggle).toHaveAttribute("aria-pressed", "true");
 });
 

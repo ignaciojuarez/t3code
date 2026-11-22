@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { PrStatusStrip, useThreadPrStripTarget } from "~/conductor/rightPanel/PrStatusStrip";
 import { usePreviewPanelInlineSize } from "../../hooks/usePreviewPanelInlineSize";
 import { RightPanelSheet } from "../RightPanelSheet";
 import { RightPanelTabs, type RightPanelTabsProps } from "../RightPanelTabs";
@@ -9,6 +11,8 @@ type ChatRightPanelProps = Omit<RightPanelTabsProps, "mode" | "inlineSize" | "ma
   readonly widthStorageKey: string;
   readonly sheetAnimationDurationMs: number;
   readonly onCloseSheet: () => void;
+  /** The Conductor terminal dock, pinned to the bottom of the panel. */
+  readonly bottomDock?: ReactNode;
 };
 
 /**
@@ -25,14 +29,30 @@ export function ChatRightPanel(props: ChatRightPanelProps) {
     onCloseSheet,
     maximized,
     layoutControls,
+    bottomDock,
     ...tabs
   } = props;
   const inlineSize = usePreviewPanelInlineSize({
     container: workspaceLayoutElement,
     widthStorageKey,
   });
+  const prStripTarget = useThreadPrStripTarget();
+  const header = prStripTarget ? (
+    <PrStatusStrip {...prStripTarget} inline={!sheet} maximized={maximized} />
+  ) : undefined;
   if (!sheet) {
-    return <RightPanelTabs {...tabs} mode="inline" maximized={maximized} inlineSize={inlineSize} />;
+    return (
+      <RightPanelTabs
+        {...tabs}
+        mode="inline"
+        maximized={maximized}
+        inlineSize={inlineSize}
+        header={header}
+        reserveTitlebarControls={false}
+        layoutControls={maximized ? layoutControls : undefined}
+        footer={bottomDock}
+      />
+    );
   }
   return (
     <RightPanelSheet
@@ -45,6 +65,8 @@ export function ChatRightPanel(props: ChatRightPanelProps) {
         mode="sheet"
         inlineSize={inlineSize}
         layoutControls={layoutControls}
+        header={header}
+        footer={bottomDock}
       />
     </RightPanelSheet>
   );

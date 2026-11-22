@@ -129,6 +129,11 @@ import {
   type TurnDiffSection,
 } from "@t3tools/client-runtime/state/thread-repositories";
 import { useOpenLink } from "../browser/useOpenLink";
+import {
+  ChangesList,
+  ChangesListToggle,
+  useChangesListView,
+} from "~/conductor/rightPanel/ChangesList";
 
 type DiffThemeType = "light" | "dark";
 const AUTOMATIC_BASE_REF = "__automatic_base_ref__";
@@ -797,6 +802,10 @@ export default function DiffPanel({
   const allDiffFilesCollapsed = areAllDiffFilesCollapsed(shownFileKeys, collapsedDiffFileKeys);
   const diffLineStat = sourceLineStat ?? getDiffLineStat(renderableFiles);
   const fileTreeEntries = diffFileTreeEntries(renderableFiles.filter(isFileShown));
+  const changesListView = useChangesListView(
+    JSON.stringify([codeViewMountKey, selectedFilePath, selectedFileRevealRequestId]),
+    selectedFilePath !== null || toolCallSelection !== null,
+  );
   const codeViewReveal = useCodeViewFileReveal();
   // Lazy files that sat above the saved position load again only when asked for.
   const codeViewScroll = useCodeViewScrollRestore(
@@ -1551,6 +1560,12 @@ export default function DiffPanel({
           </Tooltip>
         )}
         {diffFileKeys.length > 0 && (
+          <ChangesListToggle
+            shown={changesListView.shown}
+            onShownChange={changesListView.setShown}
+          />
+        )}
+        {diffFileKeys.length > 0 && (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -1677,9 +1692,10 @@ export default function DiffPanel({
                 </div>
               )
             ) : lazySource || renderablePatch?.kind === "files" ? (
-              <div className="flex min-h-0 flex-1 overflow-hidden">
+              <div className="relative flex min-h-0 flex-1 overflow-hidden">
                 <div
                   className="min-h-0 min-w-0 flex-1"
+                  inert={changesListView.shown}
                   onClickCapture={(event) => {
                     const action = getDiffHeaderClickAction(event.nativeEvent);
                     if (action?.type === "open") openDiffFile(action.filePath);
@@ -1800,6 +1816,16 @@ export default function DiffPanel({
                       onSelectFile={revealDiffFile}
                     />
                   </FileExplorerPane>
+                ) : null}
+                {changesListView.shown ? (
+                  <ChangesList
+                    files={renderableFiles.filter(isFileShown)}
+                    stats={fileStats}
+                    onSelect={(path) => {
+                      changesListView.setShown(false);
+                      revealDiffFile(path);
+                    }}
+                  />
                 ) : null}
               </div>
             ) : (

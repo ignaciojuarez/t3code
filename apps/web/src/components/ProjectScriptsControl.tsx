@@ -57,13 +57,14 @@ import {
   THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS,
   THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS,
 } from "./chat/threadDetailsPanelStyles";
+import { TOPBAR_LABEL_CLASS } from "~/conductor/header/topBarStyles";
 
 export type { NewProjectScriptInput, ProjectScriptActionResult };
 
 const NO_FILE_SCRIPTS: ReadonlyArray<T3ProjectFileScript> = [];
 
 interface ProjectScriptsControlProps {
-  displayMode?: "toolbar" | "panel";
+  displayMode?: "toolbar" | "panel" | "titlebar";
   presentation?: "toolbar" | "menu";
   onRequestMenuClose?: () => void;
   environmentId: EnvironmentId;
@@ -95,6 +96,7 @@ export default function ProjectScriptsControl({
   const gt = useGT();
   const messages = useMessages();
   const isPanel = displayMode === "panel";
+  const isTitlebar = displayMode === "titlebar";
   const ActionGroup = isPanel ? "div" : Group;
   const panelAnchorRef = React.useRef<HTMLDivElement | null>(null);
   const keybindings =
@@ -322,11 +324,13 @@ export default function ProjectScriptsControl({
             <TooltipTrigger
               render={
                 <ThreadDetailsControl
-                  size="xs"
+                  size={isTitlebar ? "compact" : "xs"}
                   variant={isPanel ? "ghost" : "outline"}
                   part="primary"
                   panel={isPanel}
-                  className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
+                  className={
+                    isPanel || isTitlebar ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"
+                  }
                   aria-label={gt("Run {name}", { name: primaryScript.name })}
                   // Tooltip replaces the button data-slot, so toolbar theming needs a separate hook.
                   data-toolbar-control=""
@@ -341,7 +345,9 @@ export default function ProjectScriptsControl({
               />
               <span
                 className={cn(
-                  "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
+                  isTitlebar
+                    ? TOPBAR_LABEL_CLASS
+                    : "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
                   isPanel && cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
                 )}
               >
@@ -357,7 +363,9 @@ export default function ProjectScriptsControl({
           {isPanel ? (
             <span aria-hidden="true" className={THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS} />
           ) : (
-            <GroupSeparator className="hidden @3xl/header-actions:block" />
+            <GroupSeparator
+              {...(isTitlebar ? {} : { className: "hidden @3xl/header-actions:block" })}
+            />
           )}
           <Menu
             open={actionsMenuOpen.scripts}
@@ -371,7 +379,7 @@ export default function ProjectScriptsControl({
                   <MenuTrigger
                     render={
                       <ThreadDetailsControl
-                        size={isPanel ? "sm" : "icon-xs"}
+                        size={isPanel ? "sm" : isTitlebar ? "icon-compact" : "icon-xs"}
                         variant={isPanel ? "ghost" : "outline"}
                         part="secondary"
                         panel={isPanel}
@@ -383,7 +391,13 @@ export default function ProjectScriptsControl({
                 }
               >
                 <ChevronDownIcon
-                  className={isPanel ? THREAD_DETAILS_PANEL_CHEVRON_CLASS : "size-4"}
+                  className={
+                    isPanel
+                      ? THREAD_DETAILS_PANEL_CHEVRON_CLASS
+                      : isTitlebar
+                        ? "size-3.5"
+                        : "size-4"
+                  }
                 />
               </TooltipTrigger>
               <TooltipPopup side="top">
@@ -453,10 +467,22 @@ export default function ProjectScriptsControl({
             }
           >
             <MenuTrigger
-              render={<Button size="xs" variant="outline" aria-label={gt("Project actions")} />}
+              render={
+                <Button
+                  size={isTitlebar ? "compact" : "xs"}
+                  variant="outline"
+                  aria-label={gt("Project actions")}
+                />
+              }
             >
               <WrenchIcon className="size-3.5" />
-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+              <span
+                className={
+                  isTitlebar
+                    ? TOPBAR_LABEL_CLASS
+                    : "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5"
+                }
+              >
                 <T context="project actions menu">Actions</T>
               </span>
               <ChevronDownIcon className="size-3.5" />
@@ -469,11 +495,13 @@ export default function ProjectScriptsControl({
           <TooltipTrigger
             render={
               <ThreadDetailsControl
-                size="xs"
+                size={isTitlebar ? "compact" : "xs"}
                 variant={isPanel ? "ghost" : "outline"}
                 part="row"
                 panel={isPanel}
-                className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
+                className={
+                  isPanel || isTitlebar ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"
+                }
                 aria-label={isPanel ? gt("Add project script") : gt("Add action")}
                 data-toolbar-control=""
                 onClick={openAddDialog}
@@ -483,7 +511,9 @@ export default function ProjectScriptsControl({
             <PlusIcon className="size-3.5" />
             <span
               className={cn(
-                "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
+                isTitlebar
+                  ? TOPBAR_LABEL_CLASS
+                  : "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
                 isPanel && cn("not-sr-only ml-0.5", THREAD_DETAILS_PANEL_LABEL_CLASS),
               )}
             >
