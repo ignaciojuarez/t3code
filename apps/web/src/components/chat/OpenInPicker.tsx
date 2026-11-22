@@ -76,6 +76,8 @@ import {
 } from "./threadDetailsPanelStyles";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
 import { useComposerMenuState } from "./useComposerMenuState";
+import { fileBasename } from "@t3tools/shared/path";
+import { TOPBAR_PATH_LABEL_CLASS } from "~/conductor/header/topBarStyles";
 
 type OpenInOption = {
   label: string;
@@ -233,12 +235,13 @@ export const OpenInPicker = memo(function OpenInPicker({
   presentation?: "toolbar" | "menu";
   compact?: boolean;
   enableShortcut?: boolean;
-  displayMode?: "toolbar" | "panel";
+  displayMode?: "toolbar" | "panel" | "titlebar";
   revealFileManager?: boolean;
 }) {
   const gt = useGT();
   const messages = useMessages();
   const isPanel = displayMode === "panel";
+  const isTitlebar = displayMode === "titlebar";
   const ActionGroup = isPanel ? "div" : Group;
   const panelAnchorRef = useRef<HTMLDivElement | null>(null);
   const openInEditorMutation = useAtomCommand(shellEnvironment.openInEditor, "open in editor");
@@ -296,11 +299,12 @@ export const OpenInPicker = memo(function OpenInPicker({
   const backgroundThread = use(BackgroundThreadContext);
   const options = resolveOpenInOptions(navigator.platform, effectiveEditors, messages);
   const primaryOption = options.find(({ value }) => value === preferredEditor) ?? null;
-  const primaryLabel = isPanel
-    ? primaryOption
-      ? gt("Open in {editor}", { editor: primaryOption.label })
-      : gt("Open in editor")
-    : gt("Open", { $context: "verb, opens the project in the preferred editor" });
+  const primaryLabel =
+    isPanel || isTitlebar
+      ? primaryOption
+        ? gt("Open in {editor}", { editor: primaryOption.label })
+        : gt("Open in editor")
+      : gt("Open", { $context: "verb, opens the project in the preferred editor" });
 
   const unavailableReason =
     remote.mode === "remote-unavailable"
@@ -399,7 +403,7 @@ export const OpenInPicker = memo(function OpenInPicker({
       aria-label={primaryControlLabel}
       // Tooltip replaces the button data-slot, so toolbar theming needs a separate hook.
       data-toolbar-control=""
-      size={isPanel ? "sm" : "xs"}
+      size={isPanel ? "sm" : isTitlebar ? "compact" : "xs"}
       variant={isPanel ? "ghost" : "outline"}
       part="primary"
       panel={isPanel}
@@ -421,18 +425,23 @@ export const OpenInPicker = memo(function OpenInPicker({
             getOpenInIconClass(primaryOption.kind),
           )}
         />
-      ) : isPanel ? (
-        <SquareArrowOutUpRightIcon aria-hidden="true" className={THREAD_DETAILS_PANEL_ICON_CLASS} />
+      ) : isPanel || isTitlebar ? (
+        <SquareArrowOutUpRightIcon
+          aria-hidden="true"
+          className={isPanel ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3.5"}
+        />
       ) : null}
       <span
         className={cn(
-          compact
-            ? "sr-only"
-            : "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
+          isTitlebar
+            ? TOPBAR_PATH_LABEL_CLASS
+            : compact
+              ? "sr-only"
+              : "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
           isPanel && cn("not-sr-only ml-0 min-w-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
         )}
       >
-        {primaryLabel}
+        {isTitlebar && openInCwd ? `/${fileBasename(openInCwd)}` : primaryLabel}
       </span>
     </ThreadDetailsControl>
   );
@@ -452,7 +461,9 @@ export const OpenInPicker = memo(function OpenInPicker({
       {isPanel ? (
         <span aria-hidden="true" className={THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS} />
       ) : (
-        <GroupSeparator {...(!compact ? { className: "hidden @3xl/header-actions:block" } : {})} />
+        <GroupSeparator
+          {...(!compact && !isTitlebar ? { className: "hidden @3xl/header-actions:block" } : {})}
+        />
       )}
       <Menu open={menuOpen} onOpenChange={setMenuOpen}>
         <Tooltip>
@@ -464,7 +475,7 @@ export const OpenInPicker = memo(function OpenInPicker({
                   <ThreadDetailsControl
                     aria-label={gt("Choose editor")}
                     data-toolbar-control=""
-                    size={isPanel ? "sm" : "icon-xs"}
+                    size={isPanel ? "sm" : isTitlebar ? "icon-compact" : "icon-xs"}
                     variant={isPanel ? "ghost" : "outline"}
                     part="secondary"
                     panel={isPanel}
@@ -475,7 +486,9 @@ export const OpenInPicker = memo(function OpenInPicker({
           >
             <ChevronDownIcon
               aria-hidden="true"
-              className={isPanel ? THREAD_DETAILS_PANEL_CHEVRON_CLASS : "size-4"}
+              className={
+                isPanel ? THREAD_DETAILS_PANEL_CHEVRON_CLASS : isTitlebar ? "size-3.5" : "size-4"
+              }
             />
           </TooltipTrigger>
           <TooltipPopup side="top">

@@ -126,6 +126,8 @@ export interface ThreadRightPanelState {
   dismissedDeviceSurfaceIds?: string[];
   maximized?: true;
   proactiveDiffTurnId?: RunId;
+  /** Default surfaces were offered once; keeps the entry so closing everything is not undone. */
+  seeded?: true;
 }
 
 export interface ThreadPanelVisibility {
@@ -155,6 +157,12 @@ interface RightPanelStoreState {
   open: (
     ref: ScopedThreadRef,
     kind: Exclude<RightPanelKind, "file" | "terminal" | "pull-request" | "issue" | "side-chat">,
+  ) => void;
+  /** Adds the missing default surfaces once per thread; only a thread without an entry opens. */
+  seedSurfaces: (
+    ref: ScopedThreadRef,
+    kinds: ReadonlyArray<"files" | "diff">,
+    activeKind: "files" | "diff",
   ) => void;
   openSideChat: (ref: ScopedThreadRef, threadId: ThreadId) => void;
   openDevice: (ref: ScopedThreadRef, target: DeviceTabTarget, automatic?: boolean) => void;
@@ -397,7 +405,8 @@ const updateThreadStateMap = (
     next.activeSurfaceId === null &&
     next.surfaces.length === 0 &&
     !next.dismissedDeviceSurfaceIds?.length &&
-    next.proactiveDiffTurnId === undefined
+    next.proactiveDiffTurnId === undefined &&
+    next.seeded === undefined
   ) {
     if (!(threadKey in byThreadKey)) return byThreadKey;
     const { [threadKey]: _removed, ...rest } = byThreadKey;
@@ -694,6 +703,7 @@ export function migratePersistedRightPanelState(persistedState: unknown): {
                       }
                     : {}),
                   ...(validThreadState?.maximized === true ? { maximized: true as const } : {}),
+                  ...(validThreadState?.seeded === true ? { seeded: true as const } : {}),
                 },
               ];
             }),
@@ -793,6 +803,30 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             return upsertSurface(current, singletonSurface(kind));
           }),
         ),
+      seedSurfaces: (ref, kinds, activeKind) =>
+        set((state) => {
+          const threadKey = scopedThreadKey(ref);
+          const current = state.byThreadKey[threadKey];
+          const [firstKind] = kinds;
+          if (current?.seeded || firstKind === undefined) return state;
+          const defaults = kinds.map((kind) => singletonSurface(kind));
+          const activeSurfaceId = kinds.includes(activeKind) ? activeKind : firstKind;
+          return automaticUpdate(state, threadKey, () =>
+            current === undefined
+              ? { isOpen: true, activeSurfaceId, surfaces: defaults, seeded: true }
+              : {
+                  ...current,
+                  activeSurfaceId: current.activeSurfaceId ?? activeSurfaceId,
+                  surfaces: [
+                    ...defaults.filter(
+                      (surface) => !current.surfaces.some((entry) => entry.id === surface.id),
+                    ),
+                    ...current.surfaces,
+                  ],
+                  seeded: true,
+                },
+          );
+        }),
       openDevice: (ref, target, automatic = false) =>
         set((state) =>
           (automatic ? automaticUpdate : userAction)(state, scopedThreadKey(ref), (current) => {

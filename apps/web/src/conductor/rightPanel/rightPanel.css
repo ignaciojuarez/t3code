@@ -1,0 +1,37 @@
+/* Right panel pieces of the Conductor fork. The --conductor-* tokens exist only under the
+   Conductor theme, so each falls back to the app's own token. */
+
+[data-right-panel-tab-list] [data-active-tab] {
+  height: 28px;
+}
+html[data-theme-id="conductor"].dark [data-right-panel-tab-list] [data-active-tab="true"] {
+  background-color: #2a2827;
+  color: #eae8e6;
+}
+
+[data-conductor-file-status="added"] {
+  color: var(--conductor-status-added, var(--diff-addition-foreground));
+}
+[data-conductor-file-status="modified"] {
+  color: var(--conductor-status-modified, var(--diff-modified-icon));
+}
+[data-conductor-file-status="deleted"] {
+  color: var(--conductor-status-deleted, var(--diff-deletion-foreground));
+}
+
+[data-conductor-pr-strip="ready"] {
+  background-color: var(
+    --conductor-pr-ready-surface,
+    color-mix(in srgb, var(--success) 14%, transparent)
+  );
+}
+[data-conductor-pr-strip="ready"] [data-conductor-pr-label] {
+  color: var(--conductor-pr-ready-foreground, var(--success-foreground));
+}
+[data-conductor-pr-merge] {
+  background-color: var(--conductor-pr-ready-action, var(--success));
+  color: #fff;
+}
+[data-conductor-pr-merge]:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--conductor-pr-ready-action, var(--success)) 88%, #fff);
+}

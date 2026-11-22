@@ -11,7 +11,7 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { T, useGT, Var } from "gt-react";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import {
   memo,
   useEffect,
@@ -55,6 +55,8 @@ interface ChatHeaderProps {
   parentThreadLink: { threadId: ThreadId; title: string } | null;
   onOpenThread: (threadId: ThreadId) => void;
   rightPanelOpen: boolean;
+  /** Leaves room for panel controls that float over the header's end; in-flow controls need none. */
+  reserveControlsInset?: boolean;
   onNewThreadInProject: () => void;
   onOpenProjectSettings?: (() => void) | undefined;
   onFindInThread?: ((threadRef: ScopedThreadRef) => void) | undefined;
@@ -80,6 +82,7 @@ export const ChatHeader = memo(function ChatHeader({
   parentThreadLink,
   onOpenThread,
   rightPanelOpen,
+  reserveControlsInset = true,
   onNewThreadInProject,
   onOpenProjectSettings,
   onFindInThread,
@@ -253,7 +256,7 @@ export const ChatHeader = memo(function ChatHeader({
       ref={breadcrumbContainerRef}
       className={cn(
         "flex min-w-0 flex-1 items-center gap-2 sm:gap-3",
-        rightPanelOpen ? "pr-10" : "pr-24",
+        reserveControlsInset && (rightPanelOpen ? "pr-10" : "pr-24"),
       )}
       onContextMenu={handleHeaderContextMenu}
     >
@@ -291,7 +294,7 @@ export const ChatHeader = memo(function ChatHeader({
               </Tooltip>
             </WorkspaceBreadcrumbItem>
             <WorkspaceBreadcrumbSeparator>
-              <WorkspaceBreadcrumbText>/</WorkspaceBreadcrumbText>
+              <ChevronRightIcon aria-hidden className="size-3.5" />
             </WorkspaceBreadcrumbSeparator>
           </>
         ) : null}
@@ -327,7 +330,7 @@ export const ChatHeader = memo(function ChatHeader({
               </Tooltip>
             </WorkspaceBreadcrumbItem>
             <WorkspaceBreadcrumbSeparator>
-              <WorkspaceBreadcrumbText>/</WorkspaceBreadcrumbText>
+              <ChevronRightIcon aria-hidden className="size-3.5" />
             </WorkspaceBreadcrumbSeparator>
           </>
         ) : null}

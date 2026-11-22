@@ -472,6 +472,11 @@ export function ThreadRelationshipsPanel(props: {
   readonly threadId: ThreadId;
   readonly showLineage: boolean;
   readonly showSideChats: boolean;
+  /** Places the panel somewhere other than inline, such as a popover behind a summary button. */
+  readonly renderFrame?: (
+    panel: ReactNode,
+    summary: { readonly runningCount: number },
+  ) => ReactNode;
 }) {
   const gt = useGT();
   const m = useMessages();
@@ -1023,7 +1028,7 @@ export function ThreadRelationshipsPanel(props: {
     );
   };
 
-  return (
+  const panel = (
     <>
       {lineageVisible ? (
         <ThreadDetailsSection
@@ -1123,4 +1128,5 @@ export function ThreadRelationshipsPanel(props: {
       ) : null}
     </>
   );
+  return props.renderFrame ? props.renderFrame(panel, { runningCount }) : panel;
 }

@@ -31,6 +31,7 @@ interface ChatTerminalDrawersProps {
   readonly closeShortcutLabel: string | undefined;
   readonly keybindings: ResolvedKeybindingsConfig;
   readonly onAddTerminalContext: (selection: TerminalContextSelection) => void;
+  readonly placement?: "drawer" | "dock";
 }
 
 /**
@@ -102,6 +103,7 @@ export function ChatTerminalDrawers(props: ChatTerminalDrawersProps) {
       closeShortcutLabel={props.closeShortcutLabel}
       keybindings={props.keybindings}
       onAddTerminalContext={props.onAddTerminalContext}
+      {...(props.placement ? { placement: props.placement } : {})}
     />
   ));
 }

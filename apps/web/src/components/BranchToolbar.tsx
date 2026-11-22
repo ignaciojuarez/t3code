@@ -69,6 +69,7 @@ import {
   MenuSubTrigger,
   MenuTrigger,
 } from "./ui/menu";
+import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { MiddleTruncate } from "./ui/middle-truncate";
@@ -87,7 +88,7 @@ export interface BranchToolbarHandle {
 }
 
 interface BranchToolbarProps {
-  layout?: "composer" | "panel";
+  layout?: "composer" | "panel" | "titlebar";
   panelSection?: "all" | "workspace" | "branch";
   forceNewWorktree?: boolean;
   ref?: Ref<BranchToolbarHandle>;
@@ -150,7 +151,7 @@ function showWorkspaceContextMenu(event: ReactMouseEvent, workspacePath: string)
 }
 
 interface RunContextSelectorProps {
-  displayMode?: "toolbar" | "panel";
+  displayMode?: "toolbar" | "panel" | "titlebar";
   workspaceRoot?: string;
   forceNewWorktree: boolean;
   autoEnvironmentLabel?: string | undefined;
@@ -213,13 +214,16 @@ const RunContextSelector = memo(function RunContextSelector({
         ? resolveEnvModeLabel("worktree", m)
         : resolveCurrentWorkspaceLabel(activeWorktreePath, m);
   const isPanel = displayMode === "panel";
-  const isLocked = envLocked || (envModeLocked && (!isPanel || !showEnvironmentPicker));
+  const isTitlebar = displayMode === "titlebar";
+  // The titlebar keeps its menu when locked: its disabled items still show where the thread runs.
+  const isLocked =
+    !isTitlebar && (envLocked || (envModeLocked && (!isPanel || !showEnvironmentPicker)));
   const workspacePath =
     forceNewWorktree || (effectiveEnvMode === "worktree" && !activeWorktreePath)
       ? null
       : (activeWorktreePath ?? workspaceRoot);
   const handleContextMenu = (event: ReactMouseEvent) => {
-    if (isPanel && workspacePath) {
+    if ((isPanel || isTitlebar) && workspacePath) {
       showWorkspaceContextMenu(event, workspacePath);
     }
   };
@@ -261,10 +265,22 @@ const RunContextSelector = memo(function RunContextSelector({
     </Tooltip>
   );
   const icon = showEnvironmentIndicator ? environmentIcon : workspaceIcon;
+  const titlebarIcon = autoEnvironmentLabel ? (
+    <ScaleIcon aria-hidden="true" />
+  ) : showEnvironmentIndicator ? (
+    <EnvironmentMachineIcon kind={activeEnvironment?.machine ?? "server"} aria-hidden="true" />
+  ) : (
+    <WorkspaceIcon aria-hidden="true" />
+  );
+  const runContextLabel = gt("Run context: {context}", {
+    context: [autoEnvironmentLabel ?? activeEnvironment?.label, workspaceLabel]
+      .filter(Boolean)
+      .join(", "),
+  });
   const triggerContent = (
     <>
       {icon}
-      <ComposerContextLabel displayMode={displayMode}>
+      <ComposerContextLabel displayMode={isPanel ? "panel" : "toolbar"}>
         {autoEnvironmentLabel ??
           (showEnvironmentIndicator ? (activeEnvironment?.label ?? gt("Run on")) : workspaceLabel)}
       </ComposerContextLabel>
@@ -282,15 +298,7 @@ const RunContextSelector = memo(function RunContextSelector({
           isPanel && THREAD_DETAILS_PANEL_LOCKED_ROW_CLASS,
         )}
         onContextMenu={handleContextMenu}
-        aria-label={
-          isPanel
-            ? gt("Run context: {context}", {
-                context: [autoEnvironmentLabel ?? activeEnvironment?.label, workspaceLabel]
-                  .filter(Boolean)
-                  .join(", "),
-              })
-            : undefined
-        }
+        aria-label={isPanel ? runContextLabel : undefined}
         data-composer-context-control
       >
         {triggerContent}
@@ -298,39 +306,56 @@ const RunContextSelector = memo(function RunContextSelector({
     );
   }
 
+  const menuTrigger = (
+    <MenuTrigger
+      render={
+        isTitlebar ? (
+          <Button variant="outline" size="icon-compact" data-toolbar-control="" />
+        ) : isPanel ? (
+          <ThreadDetailsControl part="select" />
+        ) : (
+          <ComposerControl size="xs" />
+        )
+      }
+      className={
+        isPanel || isTitlebar ? undefined : "min-w-0 max-w-[48%] flex-initial justify-start"
+      }
+      onContextMenu={handleContextMenu}
+      onMouseDownCapture={
+        isPanel
+          ? (event) => {
+              if (event.button !== 0 || event.ctrlKey) event.stopPropagation();
+            }
+          : undefined
+      }
+      aria-label={isPanel || isTitlebar ? runContextLabel : undefined}
+      data-composer-context-control
+      data-composer-shortcut={[
+        showEnvironmentPicker && !envLocked ? "composer.host" : "",
+        !envModeLocked ? "composer.workspace" : "",
+      ].join(" ")}
+    >
+      {isTitlebar ? titlebarIcon : triggerContent}
+    </MenuTrigger>
+  );
+
   return (
     <Menu>
-      <MenuTrigger
-        render={isPanel ? <ThreadDetailsControl part="select" /> : <ComposerControl size="xs" />}
-        className={isPanel ? undefined : "min-w-0 max-w-[48%] flex-initial justify-start"}
-        onContextMenu={handleContextMenu}
-        onMouseDownCapture={
-          isPanel
-            ? (event) => {
-                if (event.button !== 0 || event.ctrlKey) event.stopPropagation();
-              }
-            : undefined
-        }
-        aria-label={
-          isPanel
-            ? gt("Run context: {context}", {
-                context: [autoEnvironmentLabel ?? activeEnvironment?.label, workspaceLabel]
-                  .filter(Boolean)
-                  .join(", "),
-              })
-            : undefined
-        }
-        data-composer-context-control
-        data-composer-shortcut={[
-          showEnvironmentPicker && !envLocked ? "composer.host" : "",
-          !envModeLocked ? "composer.workspace" : "",
-        ].join(" ")}
-      >
-        {triggerContent}
-      </MenuTrigger>
+      {isTitlebar ? (
+        <Tooltip>
+          <TooltipTrigger render={menuTrigger} />
+          <TooltipPopup side="bottom">
+            {autoEnvironmentLabel ??
+              (showEnvironmentIndicator ? activeEnvironment?.label : workspaceLabel) ??
+              gt("Run on")}
+          </TooltipPopup>
+        </Tooltip>
+      ) : (
+        menuTrigger
+      )}
       <MenuPopup
-        align="start"
-        side={isPanel ? "bottom" : "top"}
+        align={isTitlebar ? "end" : "start"}
+        side={isPanel || isTitlebar ? "bottom" : "top"}
         className={
           isPanel
             ? "w-(--anchor-width)"
@@ -338,7 +363,7 @@ const RunContextSelector = memo(function RunContextSelector({
               ? "w-[min(21rem,calc(100vw-2rem))]"
               : undefined
         }
-        {...(!isPanel ? composerFloatingLayerProps : {})}
+        {...(!isPanel && !isTitlebar ? composerFloatingLayerProps : {})}
       >
         {availableEnvironments &&
         ((showEnvironmentPicker && onEnvironmentChange) || addTargets.length > 0) ? (
@@ -398,7 +423,7 @@ const RunContextSelector = memo(function RunContextSelector({
                       </span>
                     </span>
                   </MenuSubTrigger>
-                  <MenuSubPopup {...(!isPanel ? composerFloatingLayerProps : {})}>
+                  <MenuSubPopup {...(!isPanel && !isTitlebar ? composerFloatingLayerProps : {})}>
                     {addTargets.map((target) => (
                       <MenuItem
                         key={target.environmentId}
@@ -717,12 +742,16 @@ export const BranchToolbar = memo(function BranchToolbar({
 
   if (!activeProject) return null;
 
-  if (layout === "panel") {
+  // The titlebar shows only the run context, as one control in the bar's row.
+  if (layout === "panel" || layout === "titlebar") {
     return (
-      <div className="flex w-full flex-col" data-thread-panel-run-context>
+      <div
+        className={layout === "titlebar" ? "contents" : "flex w-full flex-col"}
+        data-thread-panel-run-context
+      >
         {panelSection !== "branch" ? (
           <RunContextSelector
-            displayMode="panel"
+            displayMode={layout}
             workspaceRoot={activeProject.workspaceRoot}
             forceNewWorktree={forceNewWorktree}
             autoEnvironmentLabel={autoEnvironmentLabel}
@@ -744,7 +773,7 @@ export const BranchToolbar = memo(function BranchToolbar({
             onAddToMachine={onAddToMachine}
           />
         ) : null}
-        {panelSection !== "workspace" ? (
+        {panelSection !== "workspace" && layout === "panel" ? (
           <BranchToolbarBranchSelector
             displayMode="panel"
             className="w-full"

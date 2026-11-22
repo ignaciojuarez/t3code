@@ -191,6 +191,15 @@ import {
   ThreadPreviewMiniPlayer,
   useThreadPreviewCanvasSource,
 } from "./preview/ThreadPreviewMiniPlayer";
+import { conductorFlags } from "../conductor/flags";
+import { useConductorRightPanelDefault } from "../conductor/useConductorRightPanelDefault";
+import { ConductorTerminalDock } from "../conductor/terminal/ConductorTerminalDock";
+import { ConductorDockRunControl } from "../conductor/terminal/ConductorDockRunControl";
+import {
+  ConductorPanelControls,
+  ConductorTopBarActions,
+} from "../conductor/header/ConductorTopBar";
+import { TOPBAR_HEADER_CLASS } from "../conductor/header/topBarStyles";
 import { createChatCanvasStore, resolveChatCanvasModel } from "./chat/canvasStore";
 import { usePreviewSession } from "./preview/usePreviewSession";
 import { getConfiguredPreviewUrls } from "./preview/previewEmptyStateLogic";
@@ -320,7 +329,7 @@ import {
   WorkspaceTitlebarControls,
 } from "./chat/PanelLayoutControls";
 import type { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
-import { ThreadDetailsPanel } from "./chat/ThreadDetailsPanel";
+import { ThreadDetailsPanel } from "../conductor/header/ThreadDetailsPanel";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import {
   resolveEffectiveEnvMode,
@@ -1122,6 +1131,19 @@ export default function ChatView(props: ChatViewProps) {
   const canReuseTerminal = activeThreadKnownSessionsRaw !== null;
   const previewPanelOpen = activeRightPanelKind === "preview" && browserAvailable;
   const rightPanelOpen = rightPanelState.isOpen;
+  const terminalOpenForDock = Boolean(terminalUiState.terminalOpen);
+  const previousDockTerminalRef = useRef({ threadKey: activeThreadKey, open: terminalOpenForDock });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the fork docks terminals in the right panel, so opening one (toggle, script run, shortcut) must also show the panel
+  useEffect(() => {
+    const previous = previousDockTerminalRef.current;
+    previousDockTerminalRef.current = { threadKey: activeThreadKey, open: terminalOpenForDock };
+    if (conductorFlags.centerTerminalDrawer || embedded || !activeThreadRef) return;
+    if (previous.threadKey !== activeThreadKey || previous.open || !terminalOpenForDock) return;
+    const store = useRightPanelStore.getState();
+    if (!selectThreadRightPanelState(store.byThreadKey, activeThreadRef).isOpen) {
+      store.show(activeThreadRef);
+    }
+  }, [activeThreadKey, activeThreadRef, embedded, terminalOpenForDock]);
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   const rightPanelPresenceValue = {
@@ -1141,10 +1163,12 @@ export default function ChatView(props: ChatViewProps) {
   const rightPanelControlsAtRoot = rightPanelPresent && !shouldUsePlanSidebarSheet;
   const renderedRightPanelSurface = rightPanelPresence.value?.activeSurface ?? null;
   const renderedRightPanelSurfaces = rightPanelPresence.value?.surfaces ?? [];
-  const previewMiniPlayerVisible = shouldRenderPreviewMiniPlayer(
-    activePreviewMiniPlayer?.source ?? null,
-    renderedRightPanelSurface,
-  );
+  const previewMiniPlayerVisible =
+    conductorFlags.previewMiniPlayer &&
+    shouldRenderPreviewMiniPlayer(
+      activePreviewMiniPlayer?.source ?? null,
+      renderedRightPanelSurface,
+    );
   const canMaximizeRightPanel = rightPanelOpen;
   // An embedded side chat has no panel; a stale maximized flag would hide its own column.
   const rightPanelMaximized =
@@ -2060,6 +2084,11 @@ export default function ChatView(props: ChatViewProps) {
       )
     : linkedThreadPullRequestKey;
   const activeRunningTurnId = activeRuntime?.activeRunId ?? null;
+  useConductorRightPanelDefault({
+    threadRef: isServerThread && !embedded && !shouldUsePlanSidebarSheet ? activeThreadRef : null,
+    filesAvailable: activeProject !== null,
+    isGitRepo: gitStatusQuery.data?.isRepo,
+  });
   useProactivePanels({
     threadRef: isServerThread && !embedded ? activeThreadRef : null,
     enabled: settings.proactivePanelsEnabled && !shouldUsePlanSidebarSheet && !embedded,
@@ -2808,6 +2837,8 @@ export default function ChatView(props: ChatViewProps) {
     commands: {
       ...terminalShortcuts,
       ...rightPanelShortcuts,
+      // Without the thread details card the chord is unbound, so it falls through to the browser.
+      ...(conductorFlags.threadDetailsPanel ? {} : { "threadPanel.toggle": () => false }),
       ...threadLifecycleShortcuts,
       "thread.copyReference": ({ event }) => {
         if (!event.repeat) copyActiveThreadReference();
@@ -3369,7 +3400,7 @@ export default function ChatView(props: ChatViewProps) {
   const panelToggleControls = (
     <PanelLayoutControls
       {...panelToggleControlProps}
-      showThreadPanelControl={!inlineRightPanelOwnsTitleBar}
+      showThreadPanelControl={conductorFlags.threadDetailsPanel && !inlineRightPanelOwnsTitleBar}
     />
   );
   const threadPanelHeaderControl = <ThreadPanelHeaderControl {...panelToggleControlProps} />;
@@ -3384,6 +3415,48 @@ export default function ChatView(props: ChatViewProps) {
       {panelToggleControls}
     </WorkspaceTitlebarControls>
   );
+  const setActiveTerminalHeight = (height: number) => {
+    if (activeThreadRef) {
+      useTerminalUiStateStore.getState().setTerminalHeight(activeThreadRef, height);
+    }
+  };
+  const conductorTerminalDock =
+    embedded || conductorFlags.centerTerminalDrawer ? null : (
+      <ConductorTerminalDock
+        expanded={terminalOpenForDock}
+        height={terminalUiState.terminalHeight}
+        onToggle={toggleTerminalVisibilityStable}
+        onHeightChange={setActiveTerminalHeight}
+        actions={
+          activeProject && activeThread ? (
+            <ConductorDockRunControl
+              environmentId={activeThread.environmentId}
+              gitCwd={gitCwd}
+              scripts={activeProjectScripts}
+              preferredScriptId={lastInvokedScriptByProjectId[activeProject.id] ?? null}
+              onRunScript={runProjectScriptStable}
+              onAddScript={saveProjectScriptStable}
+              onUpdateScript={updateProjectScriptStable}
+              onDeleteScript={deleteProjectScriptStable}
+            />
+          ) : null
+        }
+      >
+        <ChatTerminalDrawers
+          placement="dock"
+          activeThreadKey={activeThreadKey}
+          activeTerminalOpen={terminalOpenForDock}
+          composerHeight={0}
+          launchContext={activeTerminalLaunchContext ?? null}
+          splitShortcutLabel={splitTerminalShortcutLabel ?? undefined}
+          splitVerticalShortcutLabel={splitTerminalVerticalShortcutLabel ?? undefined}
+          newShortcutLabel={newTerminalShortcutLabel ?? undefined}
+          closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
+          keybindings={keybindings}
+          onAddTerminalContext={addTerminalContextToDraftStable}
+        />
+      </ConductorTerminalDock>
+    );
   const workspaceFileDropHandlers = makeWorkspaceFileDropHandlers({
     setDragActive: setIsWorkspaceFileDragActive,
     addFiles: addDroppedFilesToComposer,
@@ -3402,7 +3475,9 @@ export default function ChatView(props: ChatViewProps) {
           state={deviceState}
         />
       )}
-      {rightPanelControlsAtRoot && !embedded ? panelLayoutControls : null}
+      {rightPanelControlsAtRoot && !embedded && conductorFlags.threadDetailsPanel
+        ? panelLayoutControls
+        : null}
       <div
         className={cn(
           "flex min-h-0 min-w-0 flex-col overflow-x-hidden",
@@ -3428,16 +3503,23 @@ export default function ChatView(props: ChatViewProps) {
                   )
                 : "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center pl-(--workspace-gutter-start) pr-(--workspace-gutter-end)",
               COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+              !conductorFlags.threadDetailsPanel && TOPBAR_HEADER_CLASS,
             )}
           >
-            {isElectron && rightPanelControlsAtRoot ? (
+            {conductorFlags.threadDetailsPanel && isElectron && rightPanelControlsAtRoot ? (
               <span
                 aria-hidden
                 className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
               />
             ) : null}
-            {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
-            {inlineRightPanelOwnsTitleBar ? threadPanelHeaderControl : null}
+            {conductorFlags.threadDetailsPanel &&
+            !rightPanelControlsAtRoot &&
+            !rightPanelControlsInPanel
+              ? panelLayoutControls
+              : null}
+            {conductorFlags.threadDetailsPanel && inlineRightPanelOwnsTitleBar
+              ? threadPanelHeaderControl
+              : null}
             <ChatHeader
               activeThreadEnvironmentId={activeThread.environmentId}
               activeThreadId={activeThread.id}
@@ -3448,12 +3530,70 @@ export default function ChatView(props: ChatViewProps) {
               parentThreadLink={headerParentThreadLink}
               onOpenThread={onOpenRelatedThreadStable}
               rightPanelOpen={inlineRightPanelOwnsTitleBar}
+              reserveControlsInset={conductorFlags.threadDetailsPanel}
               onNewThreadInProject={handleNewThreadInActiveProjectStable}
               {...(activeDraftLogicalProjectKey
                 ? { onOpenProjectSettings: handleOpenDraftProjectSettingsStable }
                 : {})}
               {...(threadFindEnabled ? { onFindInThread: openThreadFindStable } : {})}
             />
+            {conductorFlags.threadDetailsPanel ? null : (
+              <ConductorTopBarActions
+                environmentId={activeThread.environmentId}
+                threadId={activeThread.id}
+                projectId={activeThread.projectId}
+                worktreePath={activeThread.worktreePath}
+                isServerThread={isServerThread}
+                {...(draftId ? { draftId } : {})}
+                forceNewWorktree={multipleModelSelections !== null}
+                isGitRepo={isGitRepo}
+                envLocked={envLocked}
+                envMode={envMode}
+                onEnvModeChange={onEnvModeChangeStable}
+                startFromOrigin={startFromOrigin}
+                onStartFromOriginChange={onStartFromOriginChange}
+                availableEnvironments={logicalProjectEnvironments}
+                autoEnvironmentLabel={autoEnvironmentLabel}
+                onAutoEnvironment={
+                  draftId &&
+                  !envLocked &&
+                  canAutoBalanceEnvironments &&
+                  loadBalancingSettings.loadBalancingEnabled
+                    ? onAutoEnvironmentStable
+                    : undefined
+                }
+                {...(canChangeEnvironment
+                  ? { onEnvironmentChange: onEnvironmentChangeStable }
+                  : {})}
+                keybindings={keybindings}
+                availableEditors={availableEditors}
+                showOpenInPicker={showOpenInPicker}
+                openInShortcutEnabled={
+                  !(
+                    rightPanelOpen &&
+                    renderedRightPanelSurface?.kind === "file" &&
+                    renderedRightPanelSurface.attachment === undefined
+                  )
+                }
+                gitCwd={gitCwd}
+                workspaceMutationId={workspaceMutationId}
+                activeProjectScripts={activeProject ? activeProjectScripts : undefined}
+                preferredScriptId={
+                  activeProject ? (lastInvokedScriptByProjectId[activeProject.id] ?? null) : null
+                }
+                onRunProjectScript={runProjectScriptStable}
+                onAddProjectScript={saveProjectScriptStable}
+                onUpdateProjectScript={updateProjectScriptStable}
+                onDeleteProjectScript={deleteProjectScriptStable}
+              >
+                <ConductorPanelControls
+                  {...panelToggleControlProps}
+                  showMaximizeControl={rightPanelOpen && !shouldUsePlanSidebarSheet}
+                  maximized={rightPanelMaximized}
+                  onToggleMaximized={toggleRightPanelMaximizedStable}
+                />
+              </ConductorTopBarActions>
+            )}
           </header>
         )}
 
@@ -4043,7 +4183,7 @@ export default function ChatView(props: ChatViewProps) {
           </ThreadFindCanvas>
         </div>
 
-        {embedded ? null : (
+        {embedded || !conductorFlags.centerTerminalDrawer ? null : (
           <ChatTerminalDrawers
             activeThreadKey={activeThreadKey}
             activeTerminalOpen={Boolean(terminalUiState.terminalOpen)}
@@ -4066,6 +4206,7 @@ export default function ChatView(props: ChatViewProps) {
           widthStorageKey={`t3code:preview-panel-width:${activeThreadKey}`}
           sheetAnimationDurationMs={panelAnimationsActive ? panelAnimationDurationMs : 0}
           onCloseSheet={closePreviewPanelStable}
+          bottomDock={conductorTerminalDock}
           open={rightPanelOpen}
           keybindings={keybindings}
           getShortcutContext={getShortcutContextStable}
