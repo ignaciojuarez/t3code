@@ -396,11 +396,11 @@ describe("WorkflowRunsView", () => {
     await expect.element(transcript).toHaveAttribute("aria-pressed", "true");
     await transcript.click();
     expect(thread).toHaveBeenCalledWith("fix", { threadId: "thread-1", environmentId: null });
-    // What the run touched is under its title, and on the step that touched it, with its title
-    // there only. Each opens beside the run.
+    // What the run touched is under its title, and with the picked step that touched it, with its
+    // title there only. Each opens beside the run.
     const touched = screen.getByRole("list", { name: "What the run touched" });
     await expect.element(touched).toMatchTextContent(/#101.*Wrong minutes/);
-    const onStep = flow.getByRole("button", { name: "#101 Wrong minutes" });
+    const onStep = happened.getByRole("button", { name: "#101 Wrong minutes" });
     await expect.element(onStep).toMatchTextContent(/^#101$/);
     await onStep.click();
     expect(reference).toHaveBeenCalledWith("fix", issue101);
