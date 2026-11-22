@@ -17,6 +17,7 @@ import * as Stream from "effect/Stream";
 
 import * as DesktopObservability from "../app/DesktopObservability.ts";
 import * as DesktopBackendPool from "../backend/DesktopBackendPool.ts";
+import * as ConductorForkUpdates from "../conductor/ForkUpdates.ts";
 import * as DesktopTelemetryPublisher from "../telemetry/DesktopTelemetryPublisher.ts";
 import * as DesktopUpdates from "./DesktopUpdates.ts";
 import {
@@ -291,6 +292,17 @@ export const listen: Effect.Effect<
               );
               return false;
             case "download":
+              if (ConductorForkUpdates.refusesUpstreamInstalls(updates)) {
+                yield* publishReport(
+                  state,
+                  { outcome: "failed", reason: ConductorForkUpdates.UPSTREAM_INSTALL_REFUSAL },
+                  request.requestId,
+                );
+                yield* logInfo("remote update refused by the Conductor fork", {
+                  requestId: request.requestId,
+                });
+                return true;
+              }
               attempts = { ...attempts, downloads: attempts.downloads + 1 };
               yield* updates.download.pipe(
                 Effect.flatMap((result) => {
