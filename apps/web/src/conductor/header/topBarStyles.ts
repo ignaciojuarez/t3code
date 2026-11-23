@@ -5,7 +5,7 @@
  */
 export const TOPBAR_HEADER_CLASS = "@container/chat-topbar border-b border-border";
 
-export const TOPBAR_LABEL_CLASS = "hidden min-w-0 max-w-40 truncate @2xl/chat-topbar:block";
+/** The top bar is icons only; labels stay for screen readers and tooltips carry them visually. */
+export const TOPBAR_LABEL_CLASS = "sr-only";
 
-/** The Open-in folder name is the widest label, so it drops first. */
-export const TOPBAR_PATH_LABEL_CLASS = "hidden min-w-0 max-w-40 truncate @3xl/chat-topbar:block";
+export const TOPBAR_PATH_LABEL_CLASS = "sr-only";
