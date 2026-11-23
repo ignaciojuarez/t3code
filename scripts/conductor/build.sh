@@ -42,6 +42,13 @@ done
 xcrun --find iconutil >/dev/null 2>&1 || missing+=("iconutil")
 [ "${#missing[@]}" -eq 0 ] || fail "missing prerequisites: ${missing[*]} (install Xcode Command Line Tools: xcode-select --install)."
 
+# T3 Connect's public client config: the same values official releases embed in their web bundle.
+# Without them the fork cannot sign in to T3 Connect, so remote environments over the relay never connect.
+export T3CODE_CLERK_PUBLISHABLE_KEY="${T3CODE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsudDMuY29kZXMk}"
+export T3CODE_CLERK_JWT_TEMPLATE="${T3CODE_CLERK_JWT_TEMPLATE:-t3-relay}"
+export T3CODE_CLERK_CLI_OAUTH_CLIENT_ID="${T3CODE_CLERK_CLI_OAUTH_CLIENT_ID:-hzxSgY2cH10sDU2r}"
+export T3CODE_RELAY_URL="${T3CODE_RELAY_URL:-https://relay.t3.codes}"
+
 tag="$(scripts/conductor/base.sh)"
 version="${tag#v}"
 
