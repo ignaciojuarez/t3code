@@ -19,7 +19,7 @@ file with `git diff $(scripts/conductor/base.sh)...conductor --stat`.
 - `apps/web/src/conductor/`: fork UI. `flags.ts` turns upstream behaviors off; `upgrade/` runs the
   fork upgrade from the update button.
 - `apps/desktop/src/conductor/`: the guard that stops the desktop app installing upstream builds.
-- `apps/web/src/conductor/conductorTheme.ts`: the theme palette.
+- `apps/web/src/conductor/forkThemes.ts`: the fork's built-in themes, Conductor (`conductorTheme.ts`) and Claude Clay (`claudeClayTheme.ts`), a copy of the Open VSX theme. Upstream's theme lists spread `FORK_THEMES` in `themePalette.ts`, `ThemeSettings.tsx`, and `CommandPaletteThemeItems.tsx`.
 - `scripts/conductor/`: upgrade, build, and install scripts.
 - `.agents/skills/conductor-upgrade/`: the procedure the upgrade agent follows.
 

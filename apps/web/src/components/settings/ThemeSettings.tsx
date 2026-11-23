@@ -23,7 +23,6 @@ import {
   type ThemeDefinition,
   type ThemeHalves,
   T3_CHAT_THEME,
-  CONDUCTOR_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -54,10 +53,11 @@ import {
   type ThemeMode,
 } from "./ThemePreviewCircles";
 import { ThemeWireframe } from "./ThemeWireframe";
+import { FORK_THEMES } from "../../conductor/forkThemes";
 import { T, useGT } from "gt-react";
 
 const MAINTAINER_THEMES: ReadonlyArray<ThemeDefinition> = [
-  CONDUCTOR_THEME,
+  ...FORK_THEMES,
   T3_CHAT_THEME,
   GROVE_THEME,
   OCEAN_THEME,

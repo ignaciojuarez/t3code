@@ -1,5 +1,5 @@
 import { BUILT_IN_THEMES } from "@t3tools/shared/themePalettes";
-import { CONDUCTOR_THEME } from "../conductor/conductorTheme";
+import { FORK_THEMES } from "../conductor/forkThemes";
 import { msg, T, useGT, useMessages } from "gt-react";
 import { MonitorIcon, MoonIcon, PaletteIcon, SunIcon } from "lucide-react";
 
@@ -46,7 +46,7 @@ function useThemeCards() {
   const seen = new Set<string>();
   return [
     ...STANDARD_THEME_CARDS.map((card) => ({ ...card, id: null })),
-    ...[CONDUCTOR_THEME, ...BUILT_IN_THEMES, ...customThemes, ...environmentThemes]
+    ...[...FORK_THEMES, ...BUILT_IN_THEMES, ...customThemes, ...environmentThemes]
       .filter((definition) => {
         if (seen.has(definition.id)) return false;
         seen.add(definition.id);
