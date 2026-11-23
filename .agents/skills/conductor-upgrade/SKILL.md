@@ -38,7 +38,7 @@ git diff $(scripts/conductor/base.sh)...conductor --stat
 ```
 
 Fork code lives in `apps/web/src/conductor/`, `apps/desktop/src/conductor/`,
-`apps/web/src/conductor/conductorTheme.ts`, and `scripts/conductor/`. The web directory holds the
+and `scripts/conductor/`. The web directory holds the
 flags in `flags.ts` and the upgrade flow in `upgrade/`. Everything else in the stat is a small
 hook-in to an upstream file.
 
