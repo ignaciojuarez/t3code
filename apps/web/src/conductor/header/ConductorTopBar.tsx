@@ -19,12 +19,17 @@ import {
   PanelLayoutControls,
   type PanelLayoutControlsProps,
 } from "~/components/chat/PanelLayoutControls";
-import { ThreadRelationshipsPanel } from "~/components/chat/ThreadRelationshipsControl";
+import {
+  ThreadRelationshipsPanel,
+  type RunningAgent,
+} from "~/components/chat/ThreadRelationshipsControl";
 import { Button } from "~/components/ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import type { DraftId } from "~/composerDraftStore";
 import { useProject, useServerConfigs } from "~/state/entities";
+
+import { MAX_AGENT_DOTS, agentDotColor } from "./agentDots";
 
 interface ConductorTopBarActionsProps {
   readonly environmentId: EnvironmentId;
@@ -166,8 +171,10 @@ function SubagentsButton(props: { environmentId: EnvironmentId; threadId: Thread
       threadId={props.threadId}
       showLineage
       showSideChats
-      renderFrame={(panel, { runningCount }) => (
-        <SubagentsPopover runningCount={runningCount}>{panel}</SubagentsPopover>
+      renderFrame={(panel, { runningCount, runningAgents }) => (
+        <SubagentsPopover runningCount={runningCount} runningAgents={runningAgents}>
+          {panel}
+        </SubagentsPopover>
       )}
     />
   );
@@ -175,9 +182,11 @@ function SubagentsButton(props: { environmentId: EnvironmentId; threadId: Thread
 
 function SubagentsPopover({
   runningCount,
+  runningAgents,
   children,
 }: {
   runningCount: number;
+  runningAgents: ReadonlyArray<RunningAgent>;
   children: ReactNode;
 }) {
   const gt = useGT();
@@ -203,7 +212,7 @@ function SubagentsPopover({
           }
         >
           <BotIcon aria-hidden="true" />
-          {runningCount > 0 ? <span className="tabular-nums">{runningCount}</span> : null}
+          {runningCount > 0 ? <AgentDots agents={runningAgents} total={runningCount} /> : null}
         </TooltipTrigger>
         <TooltipPopup side="bottom">{label}</TooltipPopup>
       </Tooltip>
@@ -220,5 +229,28 @@ export function ConductorPanelControls(props: PanelLayoutControlsProps) {
     <div className="flex shrink-0 items-center gap-1" data-workspace-titlebar-controls>
       <PanelLayoutControls {...props} showThreadPanelControl={false} showTerminalControl={false} />
     </div>
+  );
+}
+
+/** One pulsing dot per running agent in its provider's color; past five, a "+N" count. */
+function AgentDots({ agents, total }: { agents: ReadonlyArray<RunningAgent>; total: number }) {
+  const shown = agents.slice(0, MAX_AGENT_DOTS);
+  // Agents the panel counts but cannot attribute to a provider still get a dot.
+  const unattributed = Math.max(0, Math.min(total, MAX_AGENT_DOTS) - shown.length);
+  const overflow = total - shown.length - unattributed;
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex items-center gap-1.25"
+      data-conductor-agent-dots
+    >
+      {shown.map((agent) => (
+        <i key={agent.key} data-conductor-agent-dot style={{ color: agentDotColor(agent) }} />
+      ))}
+      {Array.from({ length: unattributed }, (_, index) => (
+        <i key={`unattributed-${index}`} data-conductor-agent-dot />
+      ))}
+      {overflow > 0 ? <span className="text-xs tabular-nums">+{overflow}</span> : null}
+    </span>
   );
 }

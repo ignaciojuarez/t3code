@@ -484,6 +484,14 @@ function DelegatedFromRow(props: {
   );
 }
 
+/** A running agent as the Conductor top bar shows it: one dot in its provider's color. */
+export interface RunningAgent {
+  readonly key: string;
+  readonly driver: string | undefined;
+  readonly model: string | undefined;
+  readonly accentColor: string | undefined;
+}
+
 export function ThreadRelationshipsPanel(props: {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
@@ -492,7 +500,7 @@ export function ThreadRelationshipsPanel(props: {
   /** Places the panel somewhere other than inline, such as a popover behind a summary button. */
   readonly renderFrame?: (
     panel: ReactNode,
-    summary: { readonly runningCount: number },
+    summary: { readonly runningCount: number; readonly runningAgents: ReadonlyArray<RunningAgent> },
   ) => ReactNode;
 }) {
   const gt = useGT();
@@ -677,6 +685,33 @@ export function ThreadRelationshipsPanel(props: {
     (projection?.subagents.filter(
       (agent) => agent.childThreadId === null && agent.status === "running",
     ).length ?? 0) + active.filter(({ edge }) => edge.status === "running").length;
+
+  // Conductor: which providers the running agents use, for the top bar's per-agent dots.
+  const runningAgents: ReadonlyArray<RunningAgent> = [
+    ...(projection?.subagents ?? [])
+      .filter((agent) => agent.childThreadId === null && agent.status === "running")
+      .map((agent) => ({
+        key: agent.id,
+        driver: agent.driver,
+        model: agent.modelSelection?.model,
+        accentColor: providerEntries.find((entry) => entry.instanceId === agent.providerInstanceId)
+          ?.accentColor,
+      })),
+    ...active
+      .filter(({ edge }) => edge.status === "running")
+      .map(({ threadId }) => {
+        const agent = subagentsByThreadId.get(threadId);
+        const instanceId =
+          agent?.providerInstanceId ?? graph.nodes.get(threadId)?.thread?.providerInstanceId;
+        return {
+          key: threadId,
+          driver: agent?.driver,
+          model: agent?.modelSelection?.model,
+          accentColor: providerEntries.find((entry) => entry.instanceId === instanceId)
+            ?.accentColor,
+        };
+      }),
+  ];
 
   // A linked environment's agent may have delegated this thread from there.
   const delegatedFrom = currentThread?.delegatedFrom;
@@ -1163,5 +1198,5 @@ export function ThreadRelationshipsPanel(props: {
       ) : null}
     </>
   );
-  return props.renderFrame ? props.renderFrame(panel, { runningCount }) : panel;
+  return props.renderFrame ? props.renderFrame(panel, { runningCount, runningAgents }) : panel;
 }
