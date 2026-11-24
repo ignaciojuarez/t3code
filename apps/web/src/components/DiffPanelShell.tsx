@@ -20,7 +20,8 @@ function getDiffPanelHeaderRowClassName(mode: DiffPanelMode) {
 
 export function DiffPanelShell(props: {
   mode: DiffPanelMode;
-  header: ReactNode;
+  /** Null leaves out the header row. */
+  header: ReactNode | null;
   children: ReactNode;
 }) {
   const shouldUseDragRegion = isElectron && props.mode !== "sheet" && props.mode !== "embedded";
@@ -34,7 +35,7 @@ export function DiffPanelShell(props: {
           : "w-full",
       )}
     >
-      {shouldUseDragRegion ? (
+      {props.header === null ? null : shouldUseDragRegion ? (
         <div className={getDiffPanelHeaderRowClassName(props.mode)}>{props.header}</div>
       ) : (
         <div className={getDiffPanelHeaderRowClassName(props.mode)} data-surface-subheader>
