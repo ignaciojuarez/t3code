@@ -49,6 +49,61 @@ svg.lucide {
   --appearance-contrast-border-boost: 0% !important;
 }
 
+/* Secondary text and icons stay secondary. Above 100%, the Contrast setting pushes every color
+   toward white, which turned muted labels, placeholders, the sidebar's and top bar's icons white
+   as the main text. Main text keeps the boost; these keep the theme's gray. */
+:root:root,
+[data-app-sidebar][data-app-sidebar] {
+  --contrast-muted-foreground: color-mix(
+    in oklab,
+    var(--muted-foreground) var(--appearance-contrast-base),
+    var(--background)
+  );
+  --contrast-placeholder: color-mix(
+    in oklab,
+    var(--placeholder) var(--appearance-contrast-base),
+    var(--background)
+  );
+  --contrast-secondary-label: color-mix(
+    in oklab,
+    var(--secondary-label) var(--appearance-contrast-base),
+    var(--background)
+  );
+  --contrast-icon-muted: color-mix(
+    in oklab,
+    var(--icon-muted) var(--appearance-contrast-base),
+    var(--background)
+  );
+  --contrast-sidebar-muted-foreground: color-mix(
+    in oklab,
+    var(--sidebar-muted-foreground) var(--appearance-contrast-base),
+    var(--sidebar)
+  );
+  --contrast-toolbar-control-foreground: color-mix(
+    in oklab,
+    var(--toolbar-control-foreground) var(--appearance-contrast-base),
+    var(--toolbar-control)
+  );
+}
+
+/* Send, queue and stop: rounded squares whose corners follow the composer's, not circles. */
+[data-composer-send-button] {
+  border-radius: 0.5rem !important;
+}
+
+/* A divider under the sidebar's search row, as in Conductor. */
+[data-sidebar="fixed-header"] {
+  border-bottom: 1px solid var(--color-sidebar-border);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.375rem;
+}
+
+/* A divider sets the sidebar's footer apart from the thread list, as in Conductor. */
+[data-slot="sidebar-footer"] {
+  border-top: 1px solid var(--color-sidebar-border);
+  padding-top: 0.375rem;
+}
+
 /* The right panel is its own surface in the sidebar's color, like Conductor's, instead of the
    chat's background. Tailwind's bg-background reads --color-background, so both are set here. */
 [data-preview-panel-mode="inline"] {
