@@ -4,25 +4,19 @@ import type {
   EditorId,
   EnvironmentId,
   ProjectId,
-  ProjectScript,
   ResolvedKeybindingsConfig,
   ThreadId,
 } from "@t3tools/contracts";
 import { useGT } from "gt-react";
-import { BotIcon } from "lucide-react";
+import { BotIcon, EllipsisIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { BranchToolbar } from "~/components/BranchToolbar";
 import type { EnvMode, EnvironmentOption } from "~/components/BranchToolbar.logic";
 import GitActionsControl from "~/components/GitActionsControl";
-import ProjectScriptsControl, {
-  type NewProjectScriptInput,
-  type ProjectScriptActionResult,
-} from "~/components/ProjectScriptsControl";
 import { OpenInPicker } from "~/components/chat/OpenInPicker";
 import {
   PanelLayoutControls,
-  RightPanelMaximizeControl,
   type PanelLayoutControlsProps,
 } from "~/components/chat/PanelLayoutControls";
 import { ThreadRelationshipsPanel } from "~/components/chat/ThreadRelationshipsControl";
@@ -30,7 +24,6 @@ import { Button } from "~/components/ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import type { DraftId } from "~/composerDraftStore";
-import { useT3ProjectFileScripts } from "~/hooks/useT3ProjectFileScripts";
 import { useProject, useServerConfigs } from "~/state/entities";
 
 interface ConductorTopBarActionsProps {
@@ -57,25 +50,15 @@ interface ConductorTopBarActionsProps {
   readonly openInShortcutEnabled: boolean;
   readonly gitCwd: string | null;
   readonly workspaceMutationId: string | null;
-  readonly activeProjectScripts: ReadonlyArray<ProjectScript> | undefined;
-  readonly preferredScriptId: string | null;
-  readonly onRunProjectScript: (script: ProjectScript) => void;
-  readonly onAddProjectScript: (input: NewProjectScriptInput) => Promise<ProjectScriptActionResult>;
-  readonly onUpdateProjectScript: (
-    scriptId: string,
-    input: NewProjectScriptInput,
-  ) => Promise<ProjectScriptActionResult>;
-  readonly onDeleteProjectScript: (scriptId: string) => Promise<ProjectScriptActionResult>;
   /** The panel toggles, last in the bar. */
   readonly children?: ReactNode;
 }
 
-/** The chat top bar's right side: the rows the thread details card used to hold, as compact controls. */
+/**
+ * The chat top bar's right side, icons only: subagents, a "more" menu holding the environment and
+ * Open in rows, git actions, and the panel toggle. Project scripts run from the terminal dock.
+ */
 export function ConductorTopBarActions(props: ConductorTopBarActionsProps) {
-  const fileScripts = useT3ProjectFileScripts(
-    props.environmentId,
-    props.activeProjectScripts ? props.gitCwd : null,
-  );
   const project = useProject(scopeProjectRef(props.environmentId, props.projectId));
   const serverConfig = useServerConfigs().get(props.environmentId);
   // A No project thread's folder sits inside the shared scratch root, so it must never get git.
@@ -95,10 +78,9 @@ export function ConductorTopBarActions(props: ConductorTopBarActionsProps) {
           threadId={props.threadId}
         />
       ) : null}
-      {/* The composer strip and shortcuts also reach these, so a narrow bar drops them first. */}
-      <div className="hidden items-center gap-1.5 @lg/chat-topbar:flex">
+      <MoreMenu>
         <BranchToolbar
-          layout="titlebar"
+          layout="panel"
           panelSection="workspace"
           environmentId={props.environmentId}
           threadId={props.threadId}
@@ -120,7 +102,7 @@ export function ConductorTopBarActions(props: ConductorTopBarActionsProps) {
         />
         {props.showOpenInPicker ? (
           <OpenInPicker
-            displayMode="titlebar"
+            displayMode="panel"
             keybindings={props.keybindings}
             environmentId={props.environmentId}
             availableEditors={props.availableEditors}
@@ -128,20 +110,7 @@ export function ConductorTopBarActions(props: ConductorTopBarActionsProps) {
             enableShortcut={props.openInShortcutEnabled}
           />
         ) : null}
-        {props.activeProjectScripts ? (
-          <ProjectScriptsControl
-            displayMode="titlebar"
-            environmentId={props.environmentId}
-            scripts={props.activeProjectScripts}
-            fileScripts={fileScripts}
-            preferredScriptId={props.preferredScriptId}
-            onRunScript={props.onRunProjectScript}
-            onAddScript={props.onAddProjectScript}
-            onUpdateScript={props.onUpdateProjectScript}
-            onDeleteScript={props.onDeleteProjectScript}
-          />
-        ) : null}
-      </div>
+      </MoreMenu>
       {offersGit ? (
         <GitActionsControl
           displayMode="titlebar"
@@ -154,6 +123,38 @@ export function ConductorTopBarActions(props: ConductorTopBarActionsProps) {
       ) : null}
       {props.children}
     </div>
+  );
+}
+
+/** The environment and Open in rows, behind one icon so the bar stays quiet. */
+function MoreMenu({ children }: { children: ReactNode }) {
+  const gt = useGT();
+  const label = gt("More", { $context: "chat top bar menu: environment and open in editor" });
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon-compact"
+                  aria-label={label}
+                  data-toolbar-control=""
+                />
+              }
+            />
+          }
+        >
+          <EllipsisIcon aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipPopup side="bottom">{label}</TooltipPopup>
+      </Tooltip>
+      <PopoverPopup align="end" width="md" padding="none">
+        <div className="flex flex-col p-1">{children}</div>
+      </PopoverPopup>
+    </Popover>
   );
 }
 
@@ -213,24 +214,11 @@ function SubagentsPopover({
   );
 }
 
-/** The panel toggles for the chat top bar, with the maximize toggle while the right panel is open. */
-export function ConductorPanelControls({
-  showMaximizeControl,
-  maximized,
-  onToggleMaximized,
-  ...props
-}: PanelLayoutControlsProps & {
-  readonly showMaximizeControl: boolean;
-  readonly maximized: boolean;
-  readonly onToggleMaximized: () => void;
-}) {
+/** The right panel toggle for the chat top bar. The terminal opens from its dock in the right panel. */
+export function ConductorPanelControls(props: PanelLayoutControlsProps) {
   return (
-    // The attribute gives the maximize toggle the same themed foreground as the other toggles.
     <div className="flex shrink-0 items-center gap-1" data-workspace-titlebar-controls>
-      {showMaximizeControl ? (
-        <RightPanelMaximizeControl maximized={maximized} onToggle={onToggleMaximized} />
-      ) : null}
-      <PanelLayoutControls {...props} showThreadPanelControl={false} />
+      <PanelLayoutControls {...props} showThreadPanelControl={false} showTerminalControl={false} />
     </div>
   );
 }

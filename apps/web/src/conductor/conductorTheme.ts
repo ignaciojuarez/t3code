@@ -8,7 +8,8 @@ const CONDUCTOR_DARK_COLORS: ThemeColors = {
   toolbarForeground: "#eae8e6",
   toolbarBorder: "#2b2826",
   toolbarControl: "#201e1c",
-  toolbarControlForeground: "#eae8e6",
+  // Top bar icons take the secondary gray of Conductor's sidebar buttons, not full white.
+  toolbarControlForeground: "#a4a09c",
   toolbarControlHover: "#2a2827",
   surface: "#141110",
   surfaceRaised: "#201e1c",
@@ -72,7 +73,7 @@ const CONDUCTOR_LIGHT_COLORS: ThemeColors = {
   toolbarForeground: "#2c2826",
   toolbarBorder: "#eae8e6",
   toolbarControl: "#ffffff",
-  toolbarControlForeground: "#2c2826",
+  toolbarControlForeground: "#756f6c",
   toolbarControlHover: "#f2f0ee",
   surface: "#ffffff",
   surfaceRaised: "#ffffff",

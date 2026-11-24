@@ -39,6 +39,8 @@ export const CONDUCTOR_TREE_UNSAFE_CSS = `${PIERRE_TREE_UNSAFE_CSS}
   :host {
     --trees-font-family-override: var(--font-mono);
     --trees-font-size-override: 13px;
+    /* A theme can set --conductor-tree-fg for the names; the inline override is the fallback. */
+    --trees-fg: var(--conductor-tree-fg, var(--trees-fg-override));
   }
   [data-item-section='icon'] > [data-icon-name='file-tree-icon-chevron'] { transform: none !important; }
 `;

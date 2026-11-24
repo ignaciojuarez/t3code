@@ -63,7 +63,9 @@ html[data-theme-id="conductor"].dark {
   --success-foreground: #91d893 !important;
   --info: #a4a09c !important;
   --info-foreground: #c9c5c1 !important;
-  --trees-file-icon-color: #a4a09c;
+  /* Folder and file names and icons sit between the text white and the secondary gray. */
+  --trees-file-icon-color: #c4c0bc;
+  --conductor-tree-fg: #c4c0bc;
   --trees-accent-override: #a4a09c;
   --trees-selected-bg-override: #2a2827;
   --trees-bg-muted-override: #232120;
@@ -78,7 +80,8 @@ html[data-theme-id="conductor"].dark {
 }
 
 html[data-theme-id="conductor"]:not(.dark) {
-  --trees-file-icon-color: #756f6c;
+  --trees-file-icon-color: #4f4a47;
+  --conductor-tree-fg: #4f4a47;
   --diff-modified-icon: #b08a00 !important;
   --trees-status-modified-override: #b08a00 !important;
   --conductor-status-added: #2f7d3a;
@@ -127,32 +130,4 @@ html[data-theme-id="conductor"].dark ::-webkit-scrollbar-thumb {
 }
 html[data-theme-id="conductor"].dark ::-webkit-scrollbar-thumb:hover {
   background-color: #3a3633;
-}
-
-/* Working indicator (WorkingDotGrid). Stepped so it repaints a few times per second, not every frame. */
-@keyframes conductor-working-dot {
-  0% {
-    opacity: 1;
-  }
-  30% {
-    opacity: 0.55;
-  }
-  60%,
-  100% {
-    opacity: 0.2;
-  }
-}
-[data-conductor-working-grid] rect {
-  opacity: 0.2;
-  animation: conductor-working-dot 1s steps(2, end) infinite;
-}
-[data-conductor-working-grid] rect[data-center] {
-  opacity: 0.4;
-  animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-conductor-working-grid] rect {
-    opacity: 0.6;
-    animation: none;
-  }
 }
