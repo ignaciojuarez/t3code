@@ -19,6 +19,8 @@ import {
 } from "./linkedThreadSurface";
 import type { ThreadPanelPresentation } from "./rightPanelLayout";
 import type { ChatFileAttachment } from "./types";
+import { conductorFlags } from "./conductor/flags";
+import { keepPinnedSurfaces, pinnedSurfacesFirst } from "./conductor/rightPanel/pinnedSurfaces";
 
 const RIGHT_PANEL_KINDS = [
   "diff",
@@ -591,7 +593,9 @@ const closeAction = (
   state: RightPanelStoreState,
   threadKey: string,
   updater: (current: ThreadRightPanelState) => ThreadRightPanelState,
-): Partial<RightPanelStoreState> => userAction(state, threadKey, updater, true);
+): Partial<RightPanelStoreState> =>
+  // Conductor: All files and Changes survive any close.
+  userAction(state, threadKey, (current) => keepPinnedSurfaces(current, updater(current)), true);
 
 function normalizeRevealLine(line: number | undefined): number | null {
   if (line === undefined || !Number.isFinite(line)) return null;
@@ -864,24 +868,39 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
           const threadKey = scopedThreadKey(ref);
           const current = state.byThreadKey[threadKey];
           const [firstKind] = kinds;
-          if (current?.seeded || firstKind === undefined) return state;
+          if (firstKind === undefined) return state;
+          // Conductor: with permanent tabs, every visit restores them, first and in order.
+          if (current?.seeded && conductorFlags.closablePanelTabs) return state;
           const defaults = kinds.map((kind) => singletonSurface(kind));
           const activeSurfaceId = kinds.includes(activeKind) ? activeKind : firstKind;
-          return automaticUpdate(state, threadKey, () =>
-            current === undefined
-              ? { isOpen: true, activeSurfaceId, surfaces: defaults, seeded: true }
-              : {
-                  ...current,
-                  activeSurfaceId: current.activeSurfaceId ?? activeSurfaceId,
-                  surfaces: [
-                    ...defaults.filter(
-                      (surface) => !current.surfaces.some((entry) => entry.id === surface.id),
-                    ),
-                    ...current.surfaces,
-                  ],
-                  seeded: true,
-                },
-          );
+          if (current === undefined) {
+            return automaticUpdate(state, threadKey, () => ({
+              isOpen: true,
+              activeSurfaceId,
+              surfaces: defaults,
+              seeded: true,
+            }));
+          }
+          const surfaces = pinnedSurfacesFirst([
+            ...defaults.filter(
+              (surface) => !current.surfaces.some((entry) => entry.id === surface.id),
+            ),
+            ...current.surfaces,
+          ]);
+          if (
+            current.seeded &&
+            current.activeSurfaceId !== null &&
+            surfaces.length === current.surfaces.length &&
+            surfaces.every((surface, index) => surface === current.surfaces[index])
+          ) {
+            return state;
+          }
+          return automaticUpdate(state, threadKey, () => ({
+            ...current,
+            activeSurfaceId: current.activeSurfaceId ?? activeSurfaceId,
+            surfaces,
+            seeded: true,
+          }));
         }),
       openDevice: (ref, target, automatic = false) =>
         set((state) =>
@@ -1262,7 +1281,11 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             if (fromIndex < 0 || fromIndex === toIndex) return current;
             const surfaces = [...current.surfaces];
             surfaces.splice(toIndex, 0, ...surfaces.splice(fromIndex, 1));
-            return { ...current, surfaces };
+            // Conductor: All files and Changes keep the first places.
+            return {
+              ...current,
+              surfaces: conductorFlags.closablePanelTabs ? surfaces : pinnedSurfacesFirst(surfaces),
+            };
           }),
         ),
       reconcileBrowserSurfaces: (ref, tabIds, hiddenTabIds) =>

@@ -161,16 +161,25 @@ html[data-theme-id="conductor"]:not(.dark) {
   --conductor-pr-ready-action: #2f7d3a;
 }
 
-/* Composer: a thin stroke in Conductor's quiet gray, a step lighter while typing. */
+/* Composer: the app's own quiet stroke in every theme, without the inset highlight; the
+   Conductor theme uses Conductor's composer gray, a step lighter while typing. */
+[data-slot="composer-host"],
+[data-chat-composer-main-surface] {
+  --chat-composer-outline: var(--color-border);
+  --chat-composer-highlight: transparent;
+}
 html[data-theme-id="conductor"] [data-slot="composer-host"] {
-  border: 1px solid #e2dfdc !important;
   border-radius: 14px !important;
 }
-html[data-theme-id="conductor"].dark [data-slot="composer-host"] {
-  border-color: #373533 !important;
+html[data-theme-id="conductor"]:not(.dark) [data-slot="composer-host"] {
+  --chat-composer-outline: #e2dfdc;
+}
+html[data-theme-id="conductor"].dark [data-slot="composer-host"],
+html[data-theme-id="conductor"].dark [data-chat-composer-main-surface] {
+  --chat-composer-outline: #373533;
 }
 html[data-theme-id="conductor"].dark [data-slot="composer-host"]:focus-within {
-  border-color: #4a4643 !important;
+  --chat-composer-outline: #4a4643;
 }
 
 /* Inline code: outlined pill. */

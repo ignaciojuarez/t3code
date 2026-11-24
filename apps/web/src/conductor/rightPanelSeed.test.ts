@@ -26,12 +26,12 @@ async function reload() {
 }
 
 describe("seedSurfaces", () => {
-  it("opens a new thread on Changes beside All files without counting as a user choice", () => {
-    useRightPanelStore.getState().seedSurfaces(ref, ["files", "diff"], "diff");
+  it("opens a new thread on All files beside Changes without counting as a user choice", () => {
+    useRightPanelStore.getState().seedSurfaces(ref, ["files", "diff"], "files");
 
     expect(panel()).toMatchObject({
       isOpen: true,
-      activeSurfaceId: "diff",
+      activeSurfaceId: "files",
       surfaces: [
         { id: "files", kind: "files" },
         { id: "diff", kind: "diff" },
@@ -40,15 +40,36 @@ describe("seedSurfaces", () => {
     expect(useRightPanelStore.getState().getUserActionRevision(ref)).toBe(0);
   });
 
-  it("does not bring back tabs the user closed, even after a reload", async () => {
+  it("keeps All files and Changes through every kind of close, and the panel open", () => {
     const store = useRightPanelStore.getState();
-    store.seedSurfaces(ref, ["files", "diff"], "diff");
+    store.seedSurfaces(ref, ["files", "diff"], "files");
+    store.open(ref, "pull-requests");
+
     store.closeAllSurfaces(ref);
+    expect(panel()).toMatchObject({
+      isOpen: true,
+      surfaces: [{ id: "files" }, { id: "diff" }],
+    });
+
+    store.closeSurface(ref, "diff");
+    store.closeOtherSurfaces(ref, "files");
+    expect(panel()?.surfaces.map((surface) => surface.id)).toEqual(["files", "diff"]);
+  });
+
+  it("brings them back, first and in order, when a saved panel lost them", async () => {
+    const store = useRightPanelStore.getState();
+    store.open(ref, "pull-requests");
+    store.seedSurfaces(ref, ["files", "diff"], "files");
+    store.moveSurface(ref, "files", 2);
     await reload();
 
-    useRightPanelStore.getState().seedSurfaces(ref, ["files", "diff"], "diff");
+    useRightPanelStore.getState().seedSurfaces(ref, ["files", "diff"], "files");
 
-    expect(panel()).toMatchObject({ isOpen: false, surfaces: [] });
+    expect(panel()?.surfaces.map((surface) => surface.id)).toEqual([
+      "files",
+      "diff",
+      "pull-requests",
+    ]);
   });
 
   it("adds the defaults ahead of a saved panel without reopening it", () => {
