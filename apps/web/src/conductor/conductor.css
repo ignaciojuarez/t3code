@@ -42,6 +42,20 @@ svg.lucide {
   stroke-width: 1.6;
 }
 
+/* Strokes stay as quiet as the theme draws them. Settings > Appearance > Contrast still lifts
+   text, but above 100% it would also mix text color into every border, which is what made them
+   bright; Conductor's are not. The left sidebar already drew its border this way. */
+:root {
+  --appearance-contrast-border-boost: 0% !important;
+}
+
+/* The right panel is its own surface in the sidebar's color, like Conductor's, instead of the
+   chat's background. Tailwind's bg-background reads --color-background, so both are set here. */
+[data-preview-panel-mode="inline"] {
+  --background: var(--sidebar);
+  --color-background: var(--sidebar);
+}
+
 /* ---- Conductor palette extras (only while the Conductor theme is active) ---- */
 
 html[data-theme-id="conductor"].dark {
@@ -92,16 +106,16 @@ html[data-theme-id="conductor"]:not(.dark) {
   --conductor-pr-ready-action: #2f7d3a;
 }
 
-/* Composer: visible stroke. */
+/* Composer: a thin stroke in Conductor's quiet gray, a step lighter while typing. */
 html[data-theme-id="conductor"] [data-slot="composer-host"] {
-  border: 1px solid #d6d3d1 !important;
+  border: 1px solid #e2dfdc !important;
   border-radius: 14px !important;
 }
 html[data-theme-id="conductor"].dark [data-slot="composer-host"] {
-  border-color: #4a4643 !important;
+  border-color: #373533 !important;
 }
 html[data-theme-id="conductor"].dark [data-slot="composer-host"]:focus-within {
-  border-color: #6b6560 !important;
+  border-color: #4a4643 !important;
 }
 
 /* Inline code: outlined pill. */

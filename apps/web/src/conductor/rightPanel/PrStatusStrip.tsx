@@ -15,7 +15,7 @@ import {
 import type { ProjectId, PullRequestRef, ScopedThreadRef } from "@t3tools/contracts";
 import { AsyncResult } from "effect/reactivity";
 import { T, useGT, useMessages } from "gt-react";
-import { ArrowUpRightIcon } from "lucide-react";
+import { ArrowUpIcon, ArrowUpRightIcon } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 
 import { useOpenLink } from "~/browser/useOpenLink";
@@ -29,6 +29,7 @@ import {
   threadPullRequestPanelTarget,
 } from "~/components/pullRequest/pullRequestDetail.logic";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { useRightPanelStore } from "~/rightPanelStore";
 import { resolvePullRequestState } from "~/components/pullRequest/pullRequestPresentation";
 import {
   usePullRequestActionRunner,
@@ -65,7 +66,8 @@ import { chatGitStatusAtom, NO_CHAT_GIT_STATUS_ATOM, vcsEnvironment } from "~/st
 import { useUiStateStore } from "~/uiStateStore";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 
-import { resolvePrStripStatus } from "./prStatusStrip.logic";
+import { branchStatusPrTarget, resolvePrStripStatus } from "./prStatusStrip.logic";
+import { NO_STRIP_GIT_STATUS_ATOM, stripGitStatusAtom } from "./stripGitStatus";
 import "./rightPanel.css";
 
 const isSettledWithoutChecks = (result: AsyncResult.AsyncResult<unknown, unknown>) =>
@@ -77,17 +79,36 @@ interface PrStripTarget {
   readonly target: NonNullable<ReturnType<typeof threadPullRequestPanelTarget>>;
 }
 
-/** The pull request the routed thread's panel opens, if the thread has one. */
+/**
+ * The pull request the routed thread's panel opens, if the thread has one. A thread that has not
+ * linked its branch's pull request yet, such as one an agent opened with the host's CLI, still
+ * gets the strip from the checkout's git status.
+ */
 export function useThreadPrStripTarget(): PrStripTarget | null {
   const threadRef = useThreadRouteRef();
   const thread = useQuietThreadShell(threadRef);
+  const project = useProject(
+    threadRef === null || thread === null
+      ? null
+      : { environmentId: threadRef.environmentId, projectId: thread.projectId },
+  );
+  const cwd = thread?.worktreePath ?? project?.workspaceRoot ?? null;
+  const gitStatus = useAtomValue(
+    threadRef === null || cwd === null
+      ? NO_CHAT_GIT_STATUS_ATOM
+      : chatGitStatusAtom(
+          vcsEnvironment.status({ environmentId: threadRef.environmentId, input: { cwd } }),
+        ),
+  );
   if (threadRef === null || thread === null) return null;
-  const target = threadPullRequestPanelTarget({
-    projectId: thread.projectId,
-    pullRequests: visibleThreadPullRequests(thread.pullRequests),
-    linkedPullRequest: thread.linkedPullRequest,
-    branchPullRequest: thread.branchPullRequest,
-  });
+  const target =
+    threadPullRequestPanelTarget({
+      projectId: thread.projectId,
+      pullRequests: visibleThreadPullRequests(thread.pullRequests),
+      linkedPullRequest: thread.linkedPullRequest,
+      branchPullRequest: thread.branchPullRequest,
+    }) ??
+    branchStatusPrTarget(thread.projectId, project?.repositoryIdentity, gitStatus?.pr ?? null);
   return target === null ? null : { threadRef, thread, target };
 }
 
@@ -161,8 +182,8 @@ export function PrStatusStrip({
   const gitScope = { environmentId, cwd };
   const gitStatus = useAtomValue(
     cwd === null
-      ? NO_CHAT_GIT_STATUS_ATOM
-      : chatGitStatusAtom(vcsEnvironment.status({ environmentId, input: { cwd } })),
+      ? NO_STRIP_GIT_STATUS_ATOM
+      : stripGitStatusAtom(vcsEnvironment.status({ environmentId, input: { cwd } })),
   );
   const stackedAction = useGitStackedAction(gitScope);
   const gitActionRunning = useSourceControlActionRunning(gitScope, ["runStackedAction"]);
@@ -185,17 +206,24 @@ export function PrStatusStrip({
   const [confirmingMerge, setConfirmingMerge] = useState(false);
   const openLink = useOpenLink(threadRef);
 
+  // Commit and push or push are only offered on the request's own branch, never another one.
+  const onPullRequestBranch =
+    gitStatus !== null &&
+    gitStatus.refName !== null &&
+    gitStatus.refName === (detail?.headBranch ?? snapshot?.headBranch);
+  const aheadCount = onPullRequestBranch && gitStatus.hasUpstream ? gitStatus.aheadCount : 0;
+  const checks = detail?.checks ?? [];
+  const failedChecks = checks.filter(
+    (check) => check.status === "failure" || check.status === "cancelled",
+  ).length;
   const status =
     state === null
       ? null
       : resolvePrStripStatus({
           state,
           isDraft,
-          // Only offered on the request's own branch, so it never pushes to another one.
-          hasWorkingTreeChanges:
-            gitStatus?.hasWorkingTreeChanges === true &&
-            gitStatus.refName !== null &&
-            gitStatus.refName === (detail?.headBranch ?? snapshot?.headBranch),
+          hasWorkingTreeChanges: onPullRequestBranch && gitStatus.hasWorkingTreeChanges,
+          aheadCount,
           conflicting: isPullRequestConflicting(detail),
           checks: detail === null ? "none" : classifyPullRequestChecks(detail.checks),
           mergeable: resolveThreadPanelPullRequestAction(detail) === "merge",
@@ -214,28 +242,48 @@ export function PrStatusStrip({
       ? null
       : status === "uncommitted"
         ? gt("Uncommitted changes")
-        : status === "ready"
-          ? gt("Ready to merge")
-          : status === "conflicts"
-            ? gt("Has conflicts")
-            : status === "checks-failing"
-              ? gt("Checks failing")
-              : status === "checks-pending"
-                ? gt("Checks running")
-                : resolvePullRequestState({ state: state ?? "open", isDraft }, messages).label;
+        : status === "ahead"
+          ? gt("Ahead by {count, plural, one {# commit} other {# commits}}", {
+              count: aheadCount,
+            })
+          : status === "ready"
+            ? gt("Ready to merge")
+            : status === "conflicts"
+              ? gt("Merge conflicts")
+              : status === "checks-failing"
+                ? gt("{failed} / {total} checks failed", {
+                    failed: failedChecks,
+                    total: checks.length,
+                  })
+                : status === "checks-pending"
+                  ? gt("Checks running")
+                  : resolvePullRequestState({ state: state ?? "open", isDraft }, messages).label;
 
   const url = detail?.url ?? target.url;
+  // Opens T3 Code's own pull request view in this panel; a modified click still opens the host.
   const openPullRequest = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button === 1)
-      return;
     event.preventDefault();
-    void openLink(url, { event });
+    if (event.metaKey || event.ctrlKey || event.shiftKey) {
+      void openLink(url, { event });
+      return;
+    }
+    openInApp();
   };
+  function openInApp() {
+    useRightPanelStore.getState().openPullRequest(threadRef, {
+      projectId: target.projectId,
+      ...("host" in target && target.host ? { host: target.host } : {}),
+      repository: target.repository,
+      number: target.number,
+      url,
+    });
+  }
+  const gitButtonDisabled = cwd === null || !stackedAction.isAllowed || gitActionRunning;
 
-  const commitAndPush = async () => {
+  const runGitAction = async (action: "commit_push" | "push") => {
     const result = await stackedAction.run({
       actionId: randomUUID(),
-      action: "commit_push",
+      action,
       threadId: thread.id,
     });
     if (result._tag === "Failure") {
@@ -278,7 +326,8 @@ export function PrStatusStrip({
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-foreground tabular-nums hover:bg-accent/60"
+              data-conductor-pr-chip
+              className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-2 tabular-nums"
               aria-label={gt(
                 "{term, select, mr {Merge request} cr {Change request} other {Pull request}} #{number}",
                 { term, number: target.number },
@@ -287,36 +336,43 @@ export function PrStatusStrip({
             />
           }
         >
-          <PullRequestGlyph.pullRequest aria-hidden className="size-3.5 text-muted-foreground" />
-          <span>#{target.number}</span>
-          <ArrowUpRightIcon aria-hidden className="size-3 text-muted-foreground" />
+          <span>
+            {gt("{term, select, mr {MR} cr {CR} other {PR}} #{number}", {
+              term,
+              number: target.number,
+            })}
+          </span>
+          <ArrowUpRightIcon aria-hidden className="size-3" />
         </TooltipTrigger>
         <TooltipPopup side="bottom">{detail?.title ?? snapshot?.title ?? url}</TooltipPopup>
       </Tooltip>
       {label === null ? (
         <span className="flex-1" />
       ) : (
-        <span
-          data-conductor-pr-label
-          className={cn(
-            "min-w-0 flex-1 truncate",
-            status === "ready" || status === "uncommitted"
-              ? "font-medium text-foreground"
-              : "text-muted-foreground",
-          )}
-        >
+        <span data-conductor-pr-label className="min-w-0 flex-1 truncate font-medium">
           {label}
         </span>
       )}
-      {status === "uncommitted" ? (
+      {status === "uncommitted" || status === "ahead" ? (
         <button
           type="button"
-          className="flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md bg-foreground px-2.5 font-medium text-background hover:bg-foreground/90 disabled:cursor-default disabled:opacity-60"
-          disabled={cwd === null || !stackedAction.isAllowed || gitActionRunning}
-          onClick={() => void commitAndPush()}
+          data-conductor-pr-action
+          disabled={gitButtonDisabled}
+          onClick={() => void runGitAction(status === "uncommitted" ? "commit_push" : "push")}
         >
-          {gitActionRunning ? <Spinner size="xs" aria-hidden /> : null}
-          {gt("Commit and push")}
+          {gitActionRunning ? (
+            <Spinner size="xs" aria-hidden />
+          ) : status === "ahead" ? (
+            <ArrowUpIcon aria-hidden className="size-3.5" />
+          ) : null}
+          {status === "uncommitted"
+            ? gt("Commit and push")
+            : gt("Push", { $context: "verb, git action" })}
+        </button>
+      ) : status === "checks-failing" || status === "conflicts" ? (
+        // T3 Code's pull request view holds the fix-in-thread and conflict tools.
+        <button type="button" data-conductor-pr-action onClick={openInApp}>
+          {status === "checks-failing" ? gt("Fix errors") : gt("Resolve conflicts")}
         </button>
       ) : status === "ready" ? (
         <button

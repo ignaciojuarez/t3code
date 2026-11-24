@@ -113,6 +113,7 @@ import {
 } from "./PullRequestDetailActions";
 import { PullRequestBaseBranch } from "./PullRequestBaseBranch";
 import { PullRequestDetailCrumbs } from "./PullRequestDetailCrumbs";
+import { conductorFlags } from "~/conductor/flags";
 import { PullRequestTitleEditor } from "./PullRequestTitleEditor";
 import { PullRequestActivityUnavailableState } from "./PullRequestActivityUnavailableState";
 import { SourceControlAppAccessNotice } from "../SourceControlAppAccessNotice";
@@ -1601,6 +1602,125 @@ export function PullRequestDetailPanel({
     );
   }
 
+  // Conductor: the thread's own pull request shows its number and merge in the PR strip above
+  // the panel, so its repository row and merge button go; the rest sits on the author line.
+  const stripOwnsHeader = context === "thread" && !conductorFlags.prPanelHeaderRow;
+  const headerActions = detail ? (
+    <TooltipProvider delay={150} closeDelay={150} timeout={400}>
+      {detail.visibility === "private" ? <PullRequestPrivateBadge /> : null}
+      {context === "page" ? (
+        <PullRequestThreadLinks
+          display="count"
+          environmentId={environmentId}
+          reference={reference}
+          url={detail.url}
+          threadRef={null}
+        />
+      ) : null}
+      {!nativeStack && supportsStackActions && nativeStackQuery.error ? (
+        <Button variant="ghost" size="xs" onClick={nativeStackQuery.refresh}>
+          <T>Retry stack lookup</T>
+        </Button>
+      ) : null}
+      {nativeStack ? (
+        <PullRequestStackMenu
+          hostLabel={hostClient.label}
+          terminology={terminology}
+          stack={nativeStack}
+          notice={nativeStackQuery.notice}
+          onRetry={nativeStackQuery.error ? nativeStackQuery.refresh : undefined}
+          reference={reference}
+          environmentId={environmentId}
+          shownHeadSha={shownHeadSha}
+          onSelect={onSelectPullRequest}
+          mergeMethod={selectedMergeMethod}
+          stale={!nativeStackQuery.isFresh}
+          canMerge={
+            supportsStackActions && can("merge") && allowedMergeMethods.length > 0
+          }
+          canRebase={
+            supportsStackActions && detail.viewerPermissions.stackRebase === true
+          }
+          canAutoMerge={
+            stackAutoMerge && can("enable-auto-merge") && allowedMergeMethods.length > 0
+          }
+          preferAutoMerge={checksState !== null && checksState !== "passing"}
+          autoMergeArmed={stackAutoMerge && autoMergeArmed}
+          canCancelAutoMerge={stackAutoMerge && can("disable-auto-merge")}
+          onActed={() => {
+            refreshDetail();
+            onActed?.();
+          }}
+        />
+      ) : null}
+      {stripOwnsHeader ? null : (
+      <PullRequestPrimaryAction
+          mergeBlockedReason={mergeBlockedReason}
+          pullRequestKey={pullRequestKey}
+          primaryAction={primaryAction}
+          autoMergeArmed={autoMergeArmed}
+          armedAutoMergeLabel={armedAutoMergeLabel}
+          pendingAutoMergeLabel={pendingAutoMergeLabel}
+          selectedMergeMethod={selectedMergeMethod}
+          selectedMergeMethodLabel={selectedMergeMethodLabel}
+          statePresentation={statePresentation}
+          pendingAction={pendingAction}
+          perform={perform}
+          resolveConflicts={resolveConflictsControl}
+        />
+    )}
+      {stripOwnsHeader ? null : checkoutControl}
+      <PullRequestActionsMenu
+        environmentId={environmentId}
+        reference={reference}
+        pullRequestKey={pullRequestKey}
+        detail={detail}
+        observedAt={observedAt}
+        terminology={terminology}
+        threadRef={threadRef}
+        linkThreadRef={
+          threadRef ??
+          (typeof composerDraftTarget === "object" ? composerDraftTarget : null)
+        }
+        onThreadPickerOpenChange={setThreadPickerOpen}
+        refreshing={refreshing}
+        refreshFromHost={refreshFromHost}
+        handoff={handoff}
+        attachesToComposer={attachTarget !== null}
+        askAboutPullRequest={askAboutPullRequest}
+        explainPullRequest={explainPullRequest}
+        canFixFindings={canFixFindings}
+        startFixFindings={startFixFindings}
+        handoffLabels={handoffLabels}
+        canWriteGuide={reviewGuidesEnabled && guideWriter.canWrite}
+        guideRunning={guideWriter.running}
+        guideWritten={guideWriter.data?.guide != null}
+        writeGuide={writeGuide}
+        pickableEnvironments={pickableEnvironments}
+        actingEnvironmentId={actingEnvironmentId}
+        onActingEnvironmentChange={selectActingEnvironment}
+        can={can}
+        autoMergeArmed={autoMergeArmed}
+        showsDraftToggle={showsDraftToggle}
+        showsMergeNow={showsMergeNow}
+        showsAutoMerge={showsAutoMerge}
+        showsMergeMethods={showsMergeMethods}
+        allowedMergeMethods={allowedMergeMethods}
+        selectedMergeMethod={selectedMergeMethod}
+        onSelectMergeMethod={selectMergeMethod}
+        showsDeleteBranch={showsDeleteBranch}
+        environmentConnected={environmentConnected}
+        canWriteSourceControl={canWriteSourceControl}
+        onMaintainerEditsSaved={refreshDetail}
+        confirmDeleteBranch={confirmDeleteBranch}
+        pendingAction={pendingAction}
+        perform={perform}
+        openOnHostText={openOnHostText}
+        copyReference={copyReference}
+      />
+    </TooltipProvider>
+  ) : null;
+
   return (
     // One tooltip for the panel's many triggers; mounting one per trigger dominated opening it.
     <SharedTooltipProvider>
@@ -1623,143 +1743,35 @@ export function PullRequestDetailPanel({
             !detail && !onClose && "hidden",
           )}
         >
-          <PullRequestDetailCrumbs
-            detail={detail}
-            threadRef={threadRef}
-            toneClassName={statePresentation?.toneClassName ?? null}
-            condensed={condensed}
-            repositoryUrl={repositoryUrl}
-            openOnHostText={openOnHostText}
-            onBack={onBack}
-          />
-          <div className="mr-4 flex h-7 shrink-0 select-none items-center justify-end gap-1">
-            {detail ? (
-              <TooltipProvider delay={150} closeDelay={150} timeout={400}>
-                {detail.visibility === "private" ? <PullRequestPrivateBadge /> : null}
-                {context === "page" ? (
-                  <PullRequestThreadLinks
-                    display="count"
-                    environmentId={environmentId}
-                    reference={reference}
-                    url={detail.url}
-                    threadRef={null}
-                  />
-                ) : null}
-                {!nativeStack && supportsStackActions && nativeStackQuery.error ? (
-                  <Button variant="ghost" size="xs" onClick={nativeStackQuery.refresh}>
-                    <T>Retry stack lookup</T>
-                  </Button>
-                ) : null}
-                {nativeStack ? (
-                  <PullRequestStackMenu
-                    hostLabel={hostClient.label}
-                    terminology={terminology}
-                    stack={nativeStack}
-                    notice={nativeStackQuery.notice}
-                    onRetry={nativeStackQuery.error ? nativeStackQuery.refresh : undefined}
-                    reference={reference}
-                    environmentId={environmentId}
-                    shownHeadSha={shownHeadSha}
-                    onSelect={onSelectPullRequest}
-                    mergeMethod={selectedMergeMethod}
-                    stale={!nativeStackQuery.isFresh}
-                    canMerge={
-                      supportsStackActions && can("merge") && allowedMergeMethods.length > 0
-                    }
-                    canRebase={
-                      supportsStackActions && detail.viewerPermissions.stackRebase === true
-                    }
-                    canAutoMerge={
-                      stackAutoMerge && can("enable-auto-merge") && allowedMergeMethods.length > 0
-                    }
-                    preferAutoMerge={checksState !== null && checksState !== "passing"}
-                    autoMergeArmed={stackAutoMerge && autoMergeArmed}
-                    canCancelAutoMerge={stackAutoMerge && can("disable-auto-merge")}
-                    onActed={() => {
-                      refreshDetail();
-                      onActed?.();
-                    }}
-                  />
-                ) : null}
-                <PullRequestPrimaryAction
-                  mergeBlockedReason={mergeBlockedReason}
-                  pullRequestKey={pullRequestKey}
-                  primaryAction={primaryAction}
-                  autoMergeArmed={autoMergeArmed}
-                  armedAutoMergeLabel={armedAutoMergeLabel}
-                  pendingAutoMergeLabel={pendingAutoMergeLabel}
-                  selectedMergeMethod={selectedMergeMethod}
-                  selectedMergeMethodLabel={selectedMergeMethodLabel}
-                  statePresentation={statePresentation}
-                  pendingAction={pendingAction}
-                  perform={perform}
-                  resolveConflicts={resolveConflictsControl}
-                />
-                {checkoutControl}
-                <PullRequestActionsMenu
-                  environmentId={environmentId}
-                  reference={reference}
-                  pullRequestKey={pullRequestKey}
-                  detail={detail}
-                  observedAt={observedAt}
-                  terminology={terminology}
-                  threadRef={threadRef}
-                  linkThreadRef={
-                    threadRef ??
-                    (typeof composerDraftTarget === "object" ? composerDraftTarget : null)
-                  }
-                  onThreadPickerOpenChange={setThreadPickerOpen}
-                  refreshing={refreshing}
-                  refreshFromHost={refreshFromHost}
-                  handoff={handoff}
-                  attachesToComposer={attachTarget !== null}
-                  askAboutPullRequest={askAboutPullRequest}
-                  explainPullRequest={explainPullRequest}
-                  canFixFindings={canFixFindings}
-                  startFixFindings={startFixFindings}
-                  handoffLabels={handoffLabels}
-                  canWriteGuide={reviewGuidesEnabled && guideWriter.canWrite}
-                  guideRunning={guideWriter.running}
-                  guideWritten={guideWriter.data?.guide != null}
-                  writeGuide={writeGuide}
-                  pickableEnvironments={pickableEnvironments}
-                  actingEnvironmentId={actingEnvironmentId}
-                  onActingEnvironmentChange={selectActingEnvironment}
-                  can={can}
-                  autoMergeArmed={autoMergeArmed}
-                  showsDraftToggle={showsDraftToggle}
-                  showsMergeNow={showsMergeNow}
-                  showsAutoMerge={showsAutoMerge}
-                  showsMergeMethods={showsMergeMethods}
-                  allowedMergeMethods={allowedMergeMethods}
-                  selectedMergeMethod={selectedMergeMethod}
-                  onSelectMergeMethod={selectMergeMethod}
-                  showsDeleteBranch={showsDeleteBranch}
-                  environmentConnected={environmentConnected}
-                  canWriteSourceControl={canWriteSourceControl}
-                  onMaintainerEditsSaved={refreshDetail}
-                  confirmDeleteBranch={confirmDeleteBranch}
-                  pendingAction={pendingAction}
-                  perform={perform}
-                  openOnHostText={openOnHostText}
-                  copyReference={copyReference}
-                />
-              </TooltipProvider>
-            ) : null}
-            {onClose ? (
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label={gt(
-                  "Collapse {term, select, mr {merge request} cr {change request} other {pull request}} panel",
-                  { term: changeRequestTermKind(terminology) },
-                )}
-                onClick={onClose}
-              >
-                <PanelRightIcon className="size-3.5" />
-              </Button>
-            ) : null}
-          </div>
+          {stripOwnsHeader ? null : (
+            <PullRequestDetailCrumbs
+              detail={detail}
+              threadRef={threadRef}
+              toneClassName={statePresentation?.toneClassName ?? null}
+              condensed={condensed}
+              repositoryUrl={repositoryUrl}
+              openOnHostText={openOnHostText}
+              onBack={onBack}
+            />
+          )}
+          {stripOwnsHeader && !onClose ? null : (
+            <div className="mr-4 flex h-7 shrink-0 select-none items-center justify-end gap-1">
+              {stripOwnsHeader ? null : headerActions}
+              {onClose ? (
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label={gt(
+                    "Collapse {term, select, mr {merge request} cr {change request} other {pull request}} panel",
+                    { term: changeRequestTermKind(terminology) },
+                  )}
+                  onClick={onClose}
+                >
+                  <PanelRightIcon className="size-3.5" />
+                </Button>
+              ) : null}
+            </div>
+          )}
 
           <div
             className={cn(
@@ -1918,6 +1930,15 @@ export function PullRequestDetailPanel({
                       />
                     ) : null
                   }
+                  {...(stripOwnsHeader
+                    ? {
+                        actions: (
+                          <span className="-my-1 flex shrink-0 items-center gap-1">
+                            {headerActions}
+                          </span>
+                        ),
+                      }
+                    : {})}
                   base={
                     <PullRequestBaseBranch
                       baseBranch={detail.baseBranch}

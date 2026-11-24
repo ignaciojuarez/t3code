@@ -41,6 +41,7 @@ export function PullRequestDetailHeaderBody({
   head,
   files,
   diffStat,
+  actions,
 }: {
   title: ReactNode;
   author: ReactNode;
@@ -50,6 +51,8 @@ export function PullRequestDetailHeaderBody({
   head: ReactNode;
   files: ReactNode;
   diffStat: ReactNode;
+  /** Trailing controls on the author line, after the checkout command. */
+  actions?: ReactNode;
 }) {
   const gt = useGT();
   return (
@@ -61,6 +64,9 @@ export function PullRequestDetailHeaderBody({
           {updated}
         </PullRequestMetaLine>
         {checkout}
+        {actions ? (
+          <span className={checkout ? "shrink-0" : "ml-auto shrink-0"}>{actions}</span>
+        ) : null}
       </div>
       <div className="mt-4 flex min-h-5 min-w-0 items-center gap-2 text-xs text-muted-foreground">
         <span className="flex min-w-0 flex-1 items-center gap-1.5 font-mono text-xs text-muted-foreground/70">
