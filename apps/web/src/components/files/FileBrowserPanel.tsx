@@ -15,6 +15,7 @@ import * as Cause from "effect/Cause";
 import { T, useGT, useMessages } from "gt-react";
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
 import { type Ref, useEffect, useEffectEvent, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { Button } from "~/components/ui/button";
 import { InputGroup, InputGroupInput } from "~/components/ui/input-group";
@@ -29,6 +30,7 @@ import { useFileContextMenu, type FileContextMenuAction } from "~/fileContextMen
 import { readLocalApi } from "~/localApi";
 import { pierreTreeStyle, titleClippedPierreTreeRow } from "~/pierre-tree-theme";
 import { CONDUCTOR_TREE_ICONS, CONDUCTOR_TREE_UNSAFE_CSS } from "~/conductor/rightPanel/treeIcons";
+import { conductorFlags } from "~/conductor/flags";
 
 import { joinHostPath } from "./filePath";
 import { createFileTreeDragMentionController } from "./fileTreeDragMention";
@@ -93,6 +95,7 @@ function FileSearchField({
 }: {
   ariaLabel: string;
   name: string;
+  onBlur?: () => void;
   onClose: () => void;
   onValueChange: (value: string) => void;
   ref: Ref<HTMLInputElement>;
@@ -114,6 +117,7 @@ function FileSearchField({
         data-workspace-focus-default
         spellCheck={false}
         onChange={(event) => props.onValueChange(event.target.value)}
+        {...(props.onBlur ? { onBlur: props.onBlur } : {})}
         onKeyDown={(event) => {
           if (event.key !== "Escape" || event.nativeEvent.isComposing || event.keyCode === 229)
             return;
@@ -359,18 +363,25 @@ export default function FileBrowserPanel({
       expanded,
     );
   };
+  // Conductor: the search row stays hidden until the find command opens it.
+  const [searchRowOpen, setSearchRowOpen] = useState(conductorFlags.filesSearchRow);
+  const searchRowShown = searchRowOpen || query.trim().length > 0;
   const closeSearch = () => {
     setQuery("");
     search.close();
+    setSearchRowOpen(conductorFlags.filesSearchRow);
   };
+  const panelRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const focusSearch = () => {
+    // Synchronous, so a close still queued (a blur just before) cannot remove the field after focus.
+    flushSync(() => setSearchRowOpen(true));
     searchInputRef.current?.focus();
     searchInputRef.current?.select();
   };
   const onPanelAction = useEffectEvent((action: PreviewAction) => {
     // Hidden panel tabs stay mounted; only the visible Files tab answers.
-    if (action === "find" && searchInputRef.current?.getClientRects().length) focusSearch();
+    if (action === "find" && panelRef.current?.getClientRects().length) focusSearch();
   });
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to the panel find command, which fires while focus is anywhere in the right panel
   useEffect(() => {
@@ -564,6 +575,7 @@ export default function FileBrowserPanel({
 
   return (
     <div
+      ref={panelRef}
       className="flex min-h-0 flex-1 flex-col bg-background"
       data-file-browser-panel={`${environmentId}:${cwd}`}
       // Capture runs before the tree's shadow-internal row handler opens the menu.
@@ -590,50 +602,55 @@ export default function FileBrowserPanel({
         focusSearch();
       }}
     >
-      <div
-        className="flex h-10 min-h-10 shrink-0 items-center gap-1 border-b border-border/60 bg-background px-2 in-data-[preview-panel-mode=inline]:mb-1 in-data-[preview-panel-mode=inline]:h-9 in-data-[preview-panel-mode=inline]:min-h-9 in-data-[preview-panel-mode=inline]:border-b-transparent"
-        data-surface-subheader
-      >
-        <RefreshFilesButton isPending={isPending} onRefresh={handleRefresh} />
-        <FileSearchField
-          ref={searchInputRef}
-          name="project-files-search"
-          ariaLabel={gt("Search {projectName} files", { projectName })}
-          value={search.value}
-          onValueChange={handleSearchValueChange}
-          onClose={closeSearch}
-        />
-        {directoryPaths.length > 0 && !hostFolder ? (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label={
-                    expandAll || allDirectoriesExpanded
-                      ? gt("Collapse all folders")
-                      : gt("Expand all folders")
-                  }
-                  onClick={toggleAllDirectories}
-                />
-              }
-            >
-              {allDirectoriesExpanded ? (
-                <ChevronsDownUpIcon className="size-3.5" />
-              ) : (
-                <ChevronsUpDownIcon className="size-3.5" />
-              )}
-            </TooltipTrigger>
-            <TooltipPopup>
-              {expandAll || allDirectoriesExpanded
-                ? gt("Collapse all folders")
-                : gt("Expand all folders")}
-            </TooltipPopup>
-          </Tooltip>
-        ) : null}
-      </div>
+      {searchRowShown ? (
+        <div
+          className="flex h-10 min-h-10 shrink-0 items-center gap-1 border-b border-border/60 bg-background px-2 in-data-[preview-panel-mode=inline]:mb-1 in-data-[preview-panel-mode=inline]:h-9 in-data-[preview-panel-mode=inline]:min-h-9 in-data-[preview-panel-mode=inline]:border-b-transparent"
+          data-surface-subheader
+        >
+          <RefreshFilesButton isPending={isPending} onRefresh={handleRefresh} />
+          <FileSearchField
+            ref={searchInputRef}
+            name="project-files-search"
+            ariaLabel={gt("Search {projectName} files", { projectName })}
+            value={search.value}
+            onValueChange={handleSearchValueChange}
+            onClose={closeSearch}
+            onBlur={() => {
+              if (!query.trim()) setSearchRowOpen(conductorFlags.filesSearchRow);
+            }}
+          />
+          {directoryPaths.length > 0 && !hostFolder ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={
+                      expandAll || allDirectoriesExpanded
+                        ? gt("Collapse all folders")
+                        : gt("Expand all folders")
+                    }
+                    onClick={toggleAllDirectories}
+                  />
+                }
+              >
+                {allDirectoriesExpanded ? (
+                  <ChevronsDownUpIcon className="size-3.5" />
+                ) : (
+                  <ChevronsUpDownIcon className="size-3.5" />
+                )}
+              </TooltipTrigger>
+              <TooltipPopup>
+                {expandAll || allDirectoriesExpanded
+                  ? gt("Collapse all folders")
+                  : gt("Expand all folders")}
+              </TooltipPopup>
+            </Tooltip>
+          ) : null}
+        </div>
+      ) : null}
       {error || pathSearch.error ? (
         <button
           type="button"

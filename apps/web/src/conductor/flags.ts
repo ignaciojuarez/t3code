@@ -4,8 +4,11 @@ export const conductorFlags: Readonly<{
   threadDetailsPanel: boolean;
   /** Upstream's terminal drawer under the chat; the fork docks terminals in the right panel instead. */
   centerTerminalDrawer: boolean;
+  /** All files' search row; the fork shows it only while searching, opened by the find command. */
+  filesSearchRow: boolean;
 }> = {
   previewMiniPlayer: false,
   threadDetailsPanel: false,
   centerTerminalDrawer: false,
+  filesSearchRow: false,
 };

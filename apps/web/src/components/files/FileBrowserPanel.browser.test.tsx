@@ -47,6 +47,11 @@ vi.mock("~/fileContextMenu", () => ({
   useFileContextMenu: () => ({ buildItems: () => [], activate: () => Promise.resolve() }),
 }));
 vi.mock("~/hooks/useWorkspaceMutationRefresh", () => ({ useWorkspaceMutationRefresh: () => {} }));
+// Conductor: these cover upstream's always-visible search row; the fork's hidden row has its own test.
+vi.mock("~/conductor/flags", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("~/conductor/flags")>();
+  return { conductorFlags: { ...actual.conductorFlags, filesSearchRow: true } };
+});
 
 function findTreeRow(path: string): HTMLElement | null {
   for (const host of document.querySelectorAll("*")) {

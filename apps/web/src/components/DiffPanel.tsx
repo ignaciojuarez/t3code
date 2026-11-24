@@ -1590,7 +1590,19 @@ export default function DiffPanel({
   );
 
   return (
-    <DiffPanelShell mode={mode} header={headerRow}>
+    <DiffPanelShell
+      mode={mode}
+      header={
+        // Conductor: in the right panel, Changes keeps the defaults and only a way back to the list.
+        mode === "embedded" ? (
+          diffFileKeys.length > 0 && !changesListView.shown ? (
+            <ChangesListToggle shown={false} onShownChange={changesListView.setShown} />
+          ) : null
+        ) : (
+          headerRow
+        )
+      }
+    >
       {!activeThread ? (
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           <T>Select a thread to inspect turn diffs.</T>
