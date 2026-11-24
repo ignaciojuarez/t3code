@@ -8,10 +8,13 @@ export const conductorFlags: Readonly<{
   filesSearchRow: boolean;
   /** The thread pull request view's repository row and merge button; the PR strip covers both. */
   prPanelHeaderRow: boolean;
+  /** Sidebar rows' third line: branch, worktree, PR and diff badges, computer and model icons. */
+  sidebarMetaLine: boolean;
 }> = {
   previewMiniPlayer: false,
   threadDetailsPanel: false,
   centerTerminalDrawer: false,
   filesSearchRow: false,
   prPanelHeaderRow: false,
+  sidebarMetaLine: false,
 };
