@@ -137,6 +137,8 @@ import { formatDiffCount } from "@t3tools/client-runtime/diff-count";
 import { ChangeBreakdownGrid } from "./pullRequest/ChangeBreakdownGrid";
 import { useOpenLink } from "~/browser/useOpenLink";
 import { TOPBAR_LABEL_CLASS } from "~/conductor/header/topBarStyles";
+import { resolveConductorCreatePrAction } from "~/conductor/header/createPrAction";
+import { PullRequestGlyph } from "./pullRequest/pullRequestIcons";
 
 interface GitActionsControlProps {
   displayMode?: "panel" | "titlebar";
@@ -353,7 +355,9 @@ function GitActionProgressButtonContent({
       <Spinner aria-hidden="true" className="row-start-1 -mx-0.5 shrink-0" />
       <p
         className={cn(
-          "row-start-1 min-w-0 self-baseline truncate text-left",
+          "row-start-1 min-w-0 truncate text-left",
+          // Conductor: one line in the top bar centers on the spinner instead of a baseline.
+          singleLine ? "self-center leading-none" : "self-baseline",
           THREAD_DETAILS_PANEL_LABEL_CLASS,
         )}
       >
@@ -361,7 +365,10 @@ function GitActionProgressButtonContent({
       </p>
       <GitActionElapsedTime
         startedAtMs={progress.startedAtMs}
-        className="col-start-3 row-start-1 self-baseline text-2xs font-normal tabular-nums text-muted-foreground"
+        className={cn(
+          "col-start-3 row-start-1 text-2xs font-normal tabular-nums text-muted-foreground",
+          singleLine ? "self-center leading-none" : "self-baseline",
+        )}
       />
       <div
         hidden={singleLine}
@@ -1222,13 +1229,25 @@ function CheckoutGitActionsControl({
     hasPrimaryRemote,
     messages,
   );
-  const quickAction = resolveQuickAction(
-    gitStatusForActions,
-    isGitActionRunning,
-    isDefaultRef,
-    hasPrimaryRemote,
-    messages,
-  );
+  // Conductor: the top bar's git control is a lone "Create PR"; the PR strip takes over after.
+  const createPrOnly = displayMode === "titlebar";
+  const createPrAction = createPrOnly
+    ? resolveConductorCreatePrAction(
+        gitStatusForActions,
+        isGitActionRunning,
+        hasPrimaryRemote,
+        messages,
+      )
+    : null;
+  const quickAction =
+    createPrAction ??
+    resolveQuickAction(
+      gitStatusForActions,
+      isGitActionRunning,
+      isDefaultRef,
+      hasPrimaryRemote,
+      messages,
+    );
   const quickActionDisabledReason = !canWriteSourceControl
     ? gt("This connection cannot change source control.")
     : quickAction.disabled
@@ -1641,6 +1660,9 @@ function CheckoutGitActionsControl({
   );
 
   if (!gitCwd) return null;
+  if (createPrOnly && createPrAction === null && !gitActionProgress && !visibleInlineSuccess) {
+    return null;
+  }
 
   const isTitlebar = displayMode === "titlebar";
   const ActionGroup = isTitlebar ? Group : "div";
@@ -1648,9 +1670,11 @@ function CheckoutGitActionsControl({
     ? ({ panel: false, variant: "outline", size: "compact", "data-toolbar-control": "" } as const)
     : ({ panel: true, variant: "ghost", size: "xs" } as const);
   const quickActionIconClass = isTitlebar ? "size-3.5" : THREAD_DETAILS_PANEL_ICON_CLASS;
-  const quickActionLabelClass = isTitlebar
-    ? TOPBAR_LABEL_CLASS
-    : cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS);
+  const quickActionLabelClass = createPrOnly
+    ? "ml-1 truncate"
+    : isTitlebar
+      ? TOPBAR_LABEL_CLASS
+      : cn("not-sr-only ml-0 truncate", THREAD_DETAILS_PANEL_LABEL_CLASS);
 
   return (
     <>
@@ -1712,11 +1736,15 @@ function CheckoutGitActionsControl({
                   <ThreadDetailsControl aria-disabled="true" part="primary" {...controlLook} />
                 }
               >
-                <GitQuickActionIcon
-                  quickAction={quickAction}
-                  SourceControlIcon={SourceControlIcon}
-                  className={quickActionIconClass}
-                />
+                {createPrOnly ? (
+                  <PullRequestGlyph.pullRequest aria-hidden className={quickActionIconClass} />
+                ) : (
+                  <GitQuickActionIcon
+                    quickAction={quickAction}
+                    SourceControlIcon={SourceControlIcon}
+                    className={quickActionIconClass}
+                  />
+                )}
                 <span className={quickActionLabelClass}>{quickAction.label}</span>
               </PopoverTrigger>
               <PopoverPopup tooltipStyle side="bottom" align="start">
@@ -1736,17 +1764,21 @@ function CheckoutGitActionsControl({
                   />
                 }
               >
-                <GitQuickActionIcon
-                  quickAction={quickAction}
-                  SourceControlIcon={SourceControlIcon}
-                  className={quickActionIconClass}
-                />
+                {createPrOnly ? (
+                  <PullRequestGlyph.pullRequest aria-hidden className={quickActionIconClass} />
+                ) : (
+                  <GitQuickActionIcon
+                    quickAction={quickAction}
+                    SourceControlIcon={SourceControlIcon}
+                    className={quickActionIconClass}
+                  />
+                )}
                 <span className={quickActionLabelClass}>{quickAction.label}</span>
               </TooltipTrigger>
               <TooltipPopup side="top">{quickAction.label}</TooltipPopup>
             </Tooltip>
           )}
-          {!gitActionProgress ? (
+          {!gitActionProgress && !createPrOnly ? (
             <>
               {isTitlebar ? (
                 <GroupSeparator />

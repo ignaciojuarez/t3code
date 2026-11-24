@@ -6,9 +6,12 @@ export const conductorFlags: Readonly<{
   centerTerminalDrawer: boolean;
   /** All files' search row; the fork shows it only while searching, opened by the find command. */
   filesSearchRow: boolean;
+  /** The thread pull request view's repository row and merge button; the PR strip covers both. */
+  prPanelHeaderRow: boolean;
 }> = {
   previewMiniPlayer: false,
   threadDetailsPanel: false,
   centerTerminalDrawer: false,
   filesSearchRow: false,
+  prPanelHeaderRow: false,
 };

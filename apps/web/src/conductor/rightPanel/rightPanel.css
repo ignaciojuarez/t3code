@@ -1,5 +1,5 @@
 /* Right panel pieces of the Conductor fork. The --conductor-* tokens exist only under the
-   Conductor theme, so each falls back to the app's own token. */
+   Conductor theme, so each falls back to a default. */
 
 [data-right-panel-tab-list] [data-active-tab] {
   height: 28px;
@@ -19,19 +19,82 @@ html[data-theme-id="conductor"].dark [data-right-panel-tab-list] [data-active-ta
   color: var(--conductor-status-deleted, var(--diff-deletion-foreground));
 }
 
-[data-conductor-pr-strip="ready"] {
-  background-color: var(
-    --conductor-pr-ready-surface,
-    color-mix(in srgb, var(--success) 14%, transparent)
-  );
+/* PR strip: one color per state for its label and PR chip, Conductor's greens for "ready".
+   Fixed values rather than theme roles, so every theme gets the same quiet strip. */
+[data-conductor-pr-strip] {
+  --conductor-strip-fg: var(--muted-foreground);
 }
-[data-conductor-pr-strip="ready"] [data-conductor-pr-label] {
-  color: var(--conductor-pr-ready-foreground, var(--success-foreground));
+[data-conductor-pr-strip="uncommitted"] {
+  --conductor-strip-fg: var(--foreground);
+}
+[data-conductor-pr-strip="ready"] {
+  --conductor-strip-fg: var(--conductor-pr-ready-foreground, #7db079);
+  background-color: var(--conductor-pr-ready-surface, #1d3824);
+}
+[data-conductor-pr-strip="checks-pending"] {
+  --conductor-strip-fg: #e3b341;
+  background-color: color-mix(in srgb, #e3b341 9%, transparent);
+}
+[data-conductor-pr-strip="checks-failing"],
+[data-conductor-pr-strip="conflicts"] {
+  --conductor-strip-fg: #e5807a;
+  background-color: color-mix(in srgb, #e5534b 11%, transparent);
+}
+[data-conductor-pr-strip="merged"] {
+  --conductor-strip-fg: #b392f0;
+  background-color: color-mix(in srgb, #8957e5 13%, transparent);
+}
+html:not(.dark) [data-conductor-pr-strip="ready"] {
+  --conductor-strip-fg: var(--conductor-pr-ready-foreground, #2f7d3a);
+  background-color: var(--conductor-pr-ready-surface, #e6f2e7);
+}
+html:not(.dark) [data-conductor-pr-strip="checks-pending"] {
+  --conductor-strip-fg: #9a6700;
+}
+html:not(.dark) [data-conductor-pr-strip="checks-failing"],
+html:not(.dark) [data-conductor-pr-strip="conflicts"] {
+  --conductor-strip-fg: #b42318;
+}
+html:not(.dark) [data-conductor-pr-strip="merged"] {
+  --conductor-strip-fg: #6e40c9;
+}
+[data-conductor-pr-strip] [data-conductor-pr-label],
+[data-conductor-pr-chip] {
+  color: var(--conductor-strip-fg);
+}
+/* The chip shares the strip's background; only a faint border in its own color sets it off. */
+[data-conductor-pr-chip] {
+  background-color: transparent;
+  border-color: color-mix(in srgb, var(--conductor-strip-fg) 35%, transparent);
+}
+[data-conductor-pr-chip]:hover {
+  background-color: color-mix(in srgb, var(--conductor-strip-fg) 10%, transparent);
+}
+/* The strip's next step besides Merge: a light filled button, like Conductor's. */
+[data-conductor-pr-action] {
+  display: flex;
+  height: 1.75rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  padding-inline: 0.625rem;
+  font-weight: 500;
+  background-color: var(--foreground);
+  color: var(--background);
+}
+[data-conductor-pr-action]:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--foreground) 90%, transparent);
+}
+[data-conductor-pr-action]:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 [data-conductor-pr-merge] {
-  background-color: var(--conductor-pr-ready-action, var(--success));
+  background-color: var(--conductor-pr-ready-action, #4b9f55);
   color: #fff;
 }
 [data-conductor-pr-merge]:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--conductor-pr-ready-action, var(--success)) 88%, #fff);
+  background-color: color-mix(in srgb, var(--conductor-pr-ready-action, #4b9f55) 88%, #fff);
 }
