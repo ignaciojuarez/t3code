@@ -259,12 +259,7 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
-import {
-  SidebarHeaderIconButton,
-  SidebarThreadHeader as UpstreamSidebarThreadHeader,
-} from "./sidebar/SidebarThreadHeader";
-import { ConductorSidebarNav } from "../conductor/ConductorSidebarNav";
-import { conductorFlags } from "../conductor/flags";
+import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { TooltipProvider, TooltipScrollDismissArea } from "./ui/tooltip";
 import {
   composerDraftHasUserContent,
@@ -294,10 +289,6 @@ import {
   SidebarSectionHeader,
   SidebarSectionPlaceholder,
 } from "./sidebar/SidebarListMarkers";
-
-const SidebarThreadHeader = conductorFlags.upstreamSidebarHeader
-  ? UpstreamSidebarThreadHeader
-  : ConductorSidebarNav;
 
 function sameSidebarProviderEntries(
   left: ReadonlyMap<string, SidebarProviderEntry>,

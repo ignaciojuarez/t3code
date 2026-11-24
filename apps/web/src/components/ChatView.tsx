@@ -3726,21 +3726,8 @@ export default function ChatView(props: ChatViewProps) {
                 }
                 gitCwd={gitCwd}
                 workspaceMutationId={workspaceMutationId}
-                activeProjectScripts={activeProject ? activeProjectScripts : undefined}
-                preferredScriptId={
-                  activeProject ? (lastInvokedScriptByProjectId[activeProject.id] ?? null) : null
-                }
-                onRunProjectScript={runProjectScriptStable}
-                onAddProjectScript={saveProjectScriptStable}
-                onUpdateProjectScript={updateProjectScriptStable}
-                onDeleteProjectScript={deleteProjectScriptStable}
               >
-                <ConductorPanelControls
-                  {...panelToggleControlProps}
-                  showMaximizeControl={rightPanelOpen && !shouldUsePlanSidebarSheet}
-                  maximized={rightPanelMaximized}
-                  onToggleMaximized={toggleRightPanelMaximizedStable}
-                />
+                <ConductorPanelControls {...panelToggleControlProps} />
               </ConductorTopBarActions>
             )}
           </header>
