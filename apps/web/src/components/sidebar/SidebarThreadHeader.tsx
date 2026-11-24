@@ -1,5 +1,5 @@
 import { useGT } from "gt-react";
-import { SearchIcon, SquarePenIcon, XIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, SquarePenIcon, XIcon } from "lucide-react";
 import {
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from "react";
 
+import { conductorFlags } from "~/conductor/flags";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { SidebarInput, SidebarMenuButton } from "../ui/sidebar";
@@ -119,7 +120,7 @@ export function SidebarThreadHeader({
           disabled={newThreadDisabled}
           onClick={onNewThread}
         >
-          <SquarePenIcon />
+          {conductorFlags.sidebarAddProjectButton ? <SquarePenIcon /> : <PlusIcon />}
         </SidebarHeaderIconButton>
       </div>
     </div>

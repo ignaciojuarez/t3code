@@ -295,6 +295,7 @@ import { readIssueListPreferences } from "~/components/issue/issueListPreference
 import { IssueGlyph } from "~/components/issue/issuePresentation";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
 import { threadRecentUse } from "@t3tools/shared/paletteSearch";
+import { conductorFlags } from "~/conductor/flags";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 const ADD_PROJECT_ENTRY_GROUP = "add-project";
@@ -1918,7 +1919,13 @@ function OpenCommandPaletteDialog(props: {
                 value: NEW_THREAD_IN_GROUP,
                 label: gt("Projects"),
                 // Every project archived and no "No project" home leaves only adding one.
-                items: projectThreadItems.length > 0 ? projectThreadItems : [addProjectAction],
+                // Conductor: adding a project is always the picker's last row.
+                items:
+                  projectThreadItems.length > 0
+                    ? conductorFlags.sidebarAddProjectButton
+                      ? projectThreadItems
+                      : [...projectThreadItems, addProjectAction]
+                    : [addProjectAction],
               },
             ]
           : currentView?.groups[0]?.value.startsWith(PORT_FORWARD_GROUP_PREFIX) && portForwardItem

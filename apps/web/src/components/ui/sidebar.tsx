@@ -2,7 +2,7 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import { T, useGT } from "gt-react";
-import { PanelLeftCloseIcon, PanelLeftIcon } from "lucide-react";
+import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -454,7 +454,8 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       variant="ghost"
       {...props}
     >
-      {isOpen ? <PanelLeftCloseIcon className="size-4" /> : <PanelLeftIcon className="size-4" />}
+      {/* Conductor: one plain panel icon either way, without the arrow. */}
+      <PanelLeftIcon className="size-4" />
       <span className="sr-only">
         <T>Toggle Sidebar</T>
       </span>
@@ -815,7 +816,11 @@ function SidebarContent({
 }) {
   return (
     <>
-      {fixedHeader ? <div className="w-full shrink-0">{fixedHeader}</div> : null}
+      {fixedHeader ? (
+        <div className="w-full shrink-0" data-sidebar="fixed-header">
+          {fixedHeader}
+        </div>
+      ) : null}
       <ScrollArea
         hideScrollbars
         scrollFade

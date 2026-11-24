@@ -133,6 +133,12 @@ vi.mock(import("~/rpc/requestLatencyState"), async (original) => ({
   trackRpcRequestSent: () => {},
 }));
 
+// Conductor: the sidebar rows' badge line is off in the fork; the issue badge test needs it.
+vi.mock(import("~/conductor/flags"), async (original) => {
+  const actual = await original();
+  return { conductorFlags: { ...actual.conductorFlags, sidebarMetaLine: true } };
+});
+
 it("opens a linked Linear issue from an inactive thread's sidebar badge", async () => {
   const style = document.createElement("style");
   style.textContent = stylesheet;

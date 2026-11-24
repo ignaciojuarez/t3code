@@ -10,6 +10,10 @@ export const conductorFlags: Readonly<{
   prPanelHeaderRow: boolean;
   /** Sidebar rows' third line: branch, worktree, PR and diff badges, computer and model icons. */
   sidebarMetaLine: boolean;
+  /** The sidebar's Add project icon; the fork offers it inside the new thread picker instead. */
+  sidebarAddProjectButton: boolean;
+  /** The composer's record audio button; dictation stays on its shortcut. */
+  composerMicButton: boolean;
 }> = {
   previewMiniPlayer: false,
   threadDetailsPanel: false,
@@ -17,4 +21,6 @@ export const conductorFlags: Readonly<{
   filesSearchRow: false,
   prPanelHeaderRow: false,
   sidebarMetaLine: false,
+  sidebarAddProjectButton: false,
+  composerMicButton: false,
 };
