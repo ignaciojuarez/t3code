@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { useRightPanelStore } from "~/rightPanelStore";
 
 /**
- * Gives a chat thread All files and Changes tabs the first time it is shown, opening the panel
- * when the thread has no saved panel yet. Waits for the repository check so a non-git project
- * gets no Changes tab.
+ * Keeps a chat thread's All files and Changes tabs first in the right panel, All files selected
+ * the first time, opening the panel when the thread has no saved panel yet. Waits for the
+ * repository check so a non-git project gets no Changes tab.
  */
 export function useConductorRightPanelDefault(input: {
   /** Null for drafts, embedded panes, and sheet layouts. */
@@ -22,6 +22,6 @@ export function useConductorRightPanelDefault(input: {
       ...(filesAvailable ? (["files"] as const) : []),
       ...(isGitRepo ? (["diff"] as const) : []),
     ];
-    useRightPanelStore.getState().seedSurfaces(threadRef, kinds, "diff");
+    useRightPanelStore.getState().seedSurfaces(threadRef, kinds, "files");
   }, [filesAvailable, isGitRepo, threadRef]);
 }

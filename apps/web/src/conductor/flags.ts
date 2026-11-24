@@ -14,6 +14,8 @@ export const conductorFlags: Readonly<{
   sidebarAddProjectButton: boolean;
   /** The composer's record audio button; dictation stays on its shortcut. */
   composerMicButton: boolean;
+  /** Closing the right panel's All files and Changes tabs; the fork keeps them, first. */
+  closablePanelTabs: boolean;
 }> = {
   previewMiniPlayer: false,
   threadDetailsPanel: false,
@@ -23,4 +25,5 @@ export const conductorFlags: Readonly<{
   sidebarMetaLine: false,
   sidebarAddProjectButton: false,
   composerMicButton: false,
+  closablePanelTabs: false,
 };
