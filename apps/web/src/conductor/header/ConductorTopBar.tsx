@@ -54,6 +54,7 @@ interface ConductorTopBarActionsProps {
   readonly showOpenInPicker: boolean;
   readonly openInShortcutEnabled: boolean;
   readonly gitCwd: string | null;
+  readonly projectName: string | undefined;
   readonly workspaceMutationId: string | null;
   /** The panel toggles, last in the bar. */
   readonly children?: ReactNode;
@@ -121,6 +122,7 @@ export function ConductorTopBarActions(props: ConductorTopBarActionsProps) {
           displayMode="titlebar"
           showChanges={false}
           gitCwd={props.gitCwd}
+          name={props.projectName ?? ""}
           workspaceMutationId={props.workspaceMutationId}
           activeThreadRef={{ environmentId: props.environmentId, threadId: props.threadId }}
           {...(props.draftId ? { draftId: props.draftId } : {})}

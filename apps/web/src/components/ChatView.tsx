@@ -3725,6 +3725,7 @@ export default function ChatView(props: ChatViewProps) {
                   )
                 }
                 gitCwd={gitCwd}
+                projectName={activeProject?.title}
                 workspaceMutationId={workspaceMutationId}
               >
                 <ConductorPanelControls {...panelToggleControlProps} />

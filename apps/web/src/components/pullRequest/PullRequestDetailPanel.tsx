@@ -1635,12 +1635,8 @@ export function PullRequestDetailPanel({
           onSelect={onSelectPullRequest}
           mergeMethod={selectedMergeMethod}
           stale={!nativeStackQuery.isFresh}
-          canMerge={
-            supportsStackActions && can("merge") && allowedMergeMethods.length > 0
-          }
-          canRebase={
-            supportsStackActions && detail.viewerPermissions.stackRebase === true
-          }
+          canMerge={supportsStackActions && can("merge") && allowedMergeMethods.length > 0}
+          canRebase={supportsStackActions && detail.viewerPermissions.stackRebase === true}
           canAutoMerge={
             stackAutoMerge && can("enable-auto-merge") && allowedMergeMethods.length > 0
           }
@@ -1654,7 +1650,7 @@ export function PullRequestDetailPanel({
         />
       ) : null}
       {stripOwnsHeader ? null : (
-      <PullRequestPrimaryAction
+        <PullRequestPrimaryAction
           mergeBlockedReason={mergeBlockedReason}
           pullRequestKey={pullRequestKey}
           primaryAction={primaryAction}
@@ -1668,7 +1664,7 @@ export function PullRequestDetailPanel({
           perform={perform}
           resolveConflicts={resolveConflictsControl}
         />
-    )}
+      )}
       {stripOwnsHeader ? null : checkoutControl}
       <PullRequestActionsMenu
         environmentId={environmentId}
@@ -1679,8 +1675,7 @@ export function PullRequestDetailPanel({
         terminology={terminology}
         threadRef={threadRef}
         linkThreadRef={
-          threadRef ??
-          (typeof composerDraftTarget === "object" ? composerDraftTarget : null)
+          threadRef ?? (typeof composerDraftTarget === "object" ? composerDraftTarget : null)
         }
         onThreadPickerOpenChange={setThreadPickerOpen}
         refreshing={refreshing}
